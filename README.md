@@ -7,6 +7,7 @@
 
 StateSpaceAnalysis.jl is a Julia package designed for fitting linear Gaussian state space models (lg-SSMs) using Subspace System Identification (SSID) and Expectation Maximization (EM) algorithms. This package provides tools for preprocessing data, fitting models, and evaluating model performance.
 
+This version is very preliminary, so there may be some rough edges!
 
 ## Installation
 
