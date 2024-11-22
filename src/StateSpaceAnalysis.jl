@@ -87,6 +87,7 @@ export  core_struct, param_struct, data_struct, results_struct, estimates_struct
 # utility functions
 include("utils/utils.jl")
 export zsel, zsel_tall, zdim, init_PD, tol_PD, init_PSD, tol_PSD, diag_PD, format_noise, sumsqr, split_list, demix, remix
+export init_param_rand
 export format_B_preSSID, format_B_postSSID
 
 include("utils/make_plots.jl")

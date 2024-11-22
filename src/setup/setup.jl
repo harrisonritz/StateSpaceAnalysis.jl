@@ -3,7 +3,7 @@
 
 
 # read in arguements from command line
-function read_args(S, ARGS)
+function read_args(S, arg_in)
     """
     read_args()
 
@@ -12,17 +12,17 @@ function read_args(S, ARGS)
 
     
     # load arguements from command line
-    println("ARGS: $ARGS")
+    println("ARGS: $arg_in")
 
-    if isempty(ARGS)
+    if isempty(arg_in)
 
         arg_num = 0;
         do_fast = true;
 
     else
 
-        arg_num = parse(Int64, ARGS[1]);
-        do_fast = parse(Bool, ARGS[2]); 
+        arg_num = parse(Int64, arg_in[1]);
+        do_fast = parse(Bool, arg_in[2]); 
 
     end
 
@@ -46,7 +46,7 @@ function read_args(S, ARGS)
 
         # assign conditions
         @reset S = assign_arguements(S, conds)
-        @reset S.prm.arg_num = parse(Int64, ARGS[1]);
+        @reset S.prm.arg_num = parse(Int64, arg_in[1]);
 
     end
 
@@ -100,7 +100,12 @@ function load_data(S)
     # load data
     if length(S.prm.load_path)>0
         raw_data = matread("$(S.prm.load_path)/$(S.prm.load_name)/$(S.prm.load_name)_$(S.dat.pt).mat")
+    else
+        error("no data path provided")
     end
+
+    # check for data
+    @assert haskey(raw_data, "y") "no y data"
 
     # get basic info
     @reset S.dat.ts = vec(raw_data["ts"]);          # time vector
@@ -121,9 +126,19 @@ function load_data(S)
     @reset S = deepcopy(select_trials(S));
 
     # select time points
-    @reset S.dat.sel_times = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
-    @reset S.dat.n_times = sum(S.dat.sel_times);
-    @reset S.dat.events = S.dat.events[S.dat.sel_times];
+    if !isempty(S.dat.events)
+        if !isempty(S.dat.sel_event)
+            @reset S.dat.sel_times = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
+        else
+            @reset S.dat.sel_times = trues(size(raw_data["y"],2));
+        end
+        @reset S.dat.n_times = sum(S.dat.sel_times);
+        @reset S.dat.events = S.dat.events[S.dat.sel_times];
+    else
+        @reset S.dat.sel_times = trues(size(raw_data["y"],2));
+        @reset S.dat.n_times = sum(S.dat.sel_times);
+        @reset S.dat.events = ones(size(raw_data["y"],2));
+    end
 
 
     # setup EEG data
@@ -136,8 +151,8 @@ function load_data(S)
     @reset S.dat.n_test = size(S.dat.y_test_orig,3);
 
     # setup predictors
-    @reset S.dat.n_pred = length(S.dat.pred_list);
-    @reset S.dat.n_pred0 = length(S.dat.pred0_list);
+    @reset S.dat.n_pred = count(!isempty, S.dat.pred_list);
+    @reset S.dat.n_pred0 = count(!isempty, S.dat.pred0_list);
     @reset S.dat.u0_dim = 1 + S.dat.n_pred0;
  
     
@@ -178,18 +193,20 @@ function build_inputs(S)
 
         center(A,d=1) = A .- mean(A,dims=d)
 
-        for pp in eachindex(u_list)
+        if !isempty(S.dat.pred_list[1])
+            for pp in eachindex(u_list)
 
-            z_cond = ones(sum(sel));
-            for uu in eachindex(u_list[pp]) # this loop allows for interaction terms
+                z_cond = ones(sum(sel));
+                for uu in eachindex(u_list[pp]) # this loop allows for interaction terms
 
-                u_cond = S.dat.trial[u_list[pp][uu]];
-                z_cond .*= scale_input(u_cond, sel)
+                    u_cond = S.dat.trial[u_list[pp][uu]];
+                    z_cond .*= scale_input(u_cond, sel)
+
+                end
+
+                pred_cond[pp,:] .= z_cond;
 
             end
-
-            pred_cond[pp,:] .= z_cond;
-
         end
       
 
@@ -215,18 +232,20 @@ function build_inputs(S)
         u0 = zeros(S.dat.u0_dim, n_trials);
         u0[1,:] .= 1.0; # constant term
 
-        for pp in eachindex(u0_list)
+        if !isempty(S.dat.pred0_list[1])
+            for pp in eachindex(u0_list)
 
-            z_cond = ones(sum(sel));
-            for uu in eachindex(u0_list[pp])
-                
-                u0_cond = S.dat.trial[u0_list[pp][uu]];
-                z_cond .*= scale_input(u0_cond, sel)
+                z_cond = ones(sum(sel));
+                for uu in eachindex(u0_list[pp])
+                    
+                    u0_cond = S.dat.trial[u0_list[pp][uu]];
+                    z_cond .*= scale_input(u0_cond, sel)
+
+                end
+
+                u0[pp+1,:] .= z_cond;
 
             end
-
-            u0[pp+1,:] .= z_cond;
-
         end
 
 

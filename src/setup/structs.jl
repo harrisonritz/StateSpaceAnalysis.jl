@@ -5,7 +5,7 @@
 @kwdef struct param_struct
 
     # model name & changelog
-    model_name::String = ""
+    model_name::String = "test"
     save_name::String = "test"
     changelog::String = ""
     arg_num = 0
@@ -60,8 +60,8 @@
     R_type::String = "full"
     P0_type::String = "full"
 
-    src_path::String = src_path
-    save_path::String = save_path
+    root_path::String = pwd()
+    save_path::String = pwd()
     do_save::Bool = false
 
 end
@@ -121,10 +121,10 @@ end
     pred_collin_train::Array{Float64,1} = zeros(0);
     pred_collin_test::Array{Float64,1} = zeros(0);
 
-    basis_name::String = "";
+    basis_name::String = "bspline";
     n_bases::Int64 = 1;
     n_splines::Int64 = 0;
-    spline_gap::Float64 = 0;
+    spline_gap::Float64 = 5;
     bin_skip::Int64 = 0;
     bin_width::Float64 = 0.050;
     n_misc::Int64 = 0;
@@ -184,6 +184,8 @@ function set_model(;A=A, B=B, Q=Q, C=C, R=R, B0=B0, P0=P0)::model_struct
     )
 
 end
+
+
 
 function transform_model(mdl::model_struct, W)::model_struct
 

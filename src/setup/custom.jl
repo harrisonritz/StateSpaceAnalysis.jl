@@ -52,6 +52,10 @@ end
 # format inputs with basis functions
 function create_input_basis(S, n_trials)
 
+    if isempty(S.dat.basis_name)
+        println("setting default basis")
+        @reset S.dat.basis_name = "bspline";
+    end
 
     println("basis: $(S.dat.basis_name)")
 

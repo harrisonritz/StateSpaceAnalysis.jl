@@ -81,6 +81,30 @@ end
 
 
 
+# random parameters
+
+function init_param_rand(S)
+
+
+
+
+    A = Matrix(Diagonal(rand(S.dat.x_dim)));
+    B = randn(S.dat.x_dim, S.dat.u_dim);
+    Q = tol_PD(randn(S.dat.x_dim, S.dat.x_dim));
+
+    C = randn(S.dat.y_dim, S.dat.x_dim);
+    R = tol_PD(randn(S.dat.y_dim, S.dat.y_dim));
+
+    B0 = randn(S.dat.x_dim, S.dat.u0_dim);
+    P0 = tol_PD(randn(S.dat.x_dim, S.dat.x_dim));
+
+    @reset S.mdl = set_model(;A=A, B=B, Q=Q, C=C, R=R, B0=B0, P0=P0);
+
+    return S
+
+end
+
+
 
 # misc =============================
 init_PD(d) = PDMat(diagm(ones(d)));
