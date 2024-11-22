@@ -3,16 +3,16 @@
 # EDIT THIS!
 run_cluster = length(ARGS)!=0;
 if run_cluster
-    src_path = "/home/hr0283/HallM_StateSpaceAnalysis/src"
+    root_path = "/home/hr0283/HallM_StateSpaceAnalysis/src"
     save_path = "/scratch/gpfs/hr0283/HallM_StateSpaceAnalysis/src";
 else 
-    src_path =  "/Users/hr0283/Projects/StateSpaceAnalysis.jl/src"
+    root_path =  "/Users/hr0283/Projects/StateSpaceAnalysis.jl/src"
     save_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example";
 end
 
 push!(LOAD_PATH, pwd());
 push!(LOAD_PATH, "$(pwd())/../");
-push!(LOAD_PATH, src_path);
+push!(LOAD_PATH, root_path);
 if run_cluster
     println(LOAD_PATH)
 end
@@ -66,7 +66,7 @@ S = core_struct(
         seed = rand_seed,
         model_name = "test",
         changelog = "run test",
-        load_name = "HallMcMaster2019_ITI100-Cue200-ISI400-Trial200_srate@125_filt@0-30",
+        load_name = "example",
         load_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example/example-data",
         pt_list = 1:1, # always has to be range
 
@@ -76,7 +76,7 @@ S = core_struct(
 
         x_dim_fast = round.(Int64, 16:16:128),
         
-        src_path = src_path,
+        root_path = root_path,
         save_path = save_path,
         do_save = run_cluster ? true : false, 
 

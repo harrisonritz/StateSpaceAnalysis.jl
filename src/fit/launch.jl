@@ -29,10 +29,20 @@ function preprocess_fit(S)
     StateSpaceAnalysis.null_loglik!(S);
     #  =======================================================================
 
+    # INIT ESTIMATES ====================================
+    @reset S.est = deepcopy(set_estimates(S));
+    #  =======================================================================
+
+
+    # INIT RANDOM MODEL ====================================
+    @reset S = deepcopy(init_param_rand(S));
+    #  =======================================================================
+
+
 
     # REPORT DATA ==============================================
     println("\n========== FIT INFO ==========")
-    println("src path: $(S.prm.src_path)")
+    println("root path: $(S.prm.root_path)")
     println("load name: $(S.prm.load_name)")
     println("load path: $(S.prm.load_path)")
     println("save name: $(S.prm.save_name)")
