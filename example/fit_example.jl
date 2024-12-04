@@ -124,9 +124,6 @@ println("Starting fit at $(S.res.startTime_all)")
 
 # PREPROCESS ======================================
 @reset S = StateSpaceAnalysis.preprocess_fit(S);
-
-# @reset S = StateSpaceAnalysis.init_param_rand(S); # helfpul for debugging
-
 # =================================================
 
 
