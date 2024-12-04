@@ -139,16 +139,22 @@ within preprocess_fit(S):
 ```julia
 # read in arguements, helpful for running on a cluster
 S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
+
 # set up the paths
 StateSpaceAnalysis.setup_path(S)
+
 # load and format the data; split for cross-validation
 S = deepcopy(StateSpaceAnalysis.load_data(S));
+
 # build the input matrices
 S = deepcopy(StateSpaceAnalysis.build_inputs(S));
+
 # transform the observed data
 S = deepcopy(StateSpaceAnalysis.whiten(S));
+
 # fit baseline models to the data
 StateSpaceAnalysis.null_loglik!(S);
+
 # initialize the expectations and parameters
 @reset S.est = deepcopy(set_estimates(S));
 @reset S = deepcopy(gen_rand_params(S));
