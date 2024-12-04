@@ -5,13 +5,9 @@ using Test
 using Accessors
 
 
-# set path
-global load_path = pkgdir(StateSpaceAnalysis, "example", "example-data")
-
 # select tests
 do_Aqua = true
 do_custom = true
-
 
 
 
@@ -36,7 +32,7 @@ end
 if do_custom
 
    
-    println("\n\nCUSTOM TESTS ...")
+    println("\n\nCUSTOM TESTS ...\n")
 
     @testset "StateSpaceAnalysis.jl" begin
 
@@ -44,7 +40,10 @@ if do_custom
         # Test for read_args function
         @testset "read_args" begin
             S = core_struct(
-                prm=param_struct(), 
+                prm=param_struct(
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
+                ), 
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),
@@ -61,7 +60,10 @@ if do_custom
         # Test for setup_dir function
         @testset "setup_dir" begin
             S = core_struct(
-                prm=param_struct(), 
+                prm=param_struct(
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
+                ), 
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),
@@ -79,8 +81,10 @@ if do_custom
         @testset "load_data" begin
             S = core_struct(
                 prm=param_struct(
-                    load_name="example",
-                    load_path=load_path), 
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
+                    load_name="example"
+                    ), 
                     dat=data_struct(
                     sel_event = 2:2
                 ),
@@ -98,8 +102,10 @@ if do_custom
         @testset "build_inputs" begin
             S = core_struct(
                 prm=param_struct(
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
                     load_name="example",
-                    load_path=load_path),
+                    ),
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),
@@ -117,8 +123,10 @@ if do_custom
         @testset "whiten_y" begin
             S = core_struct(
                 prm=param_struct(
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
                     load_name="example",
-                    load_path=load_path), 
+                    ), 
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),
@@ -136,8 +144,10 @@ if do_custom
         @testset "test_rep_ESTEP" begin
             S = core_struct(
                 prm=param_struct(
+                    load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
+                    save_path=pkgdir(StateSpaceAnalysis, "example"),
                     load_name="example",
-                    load_path=load_path), 
+                    ), 
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),

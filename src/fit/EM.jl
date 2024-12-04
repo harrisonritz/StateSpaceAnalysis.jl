@@ -4,21 +4,37 @@
 
 function fit_EM(S); 
     """
-    run EM for individual participants
+        fit_EM(S)
+
+    Fit a probabilistic state-space model using the Expectation-Maximization (EM) algorithm.
+
+    # Arguments
+    - `S`: structure containing the parameters, data, and results of the model fit.
+
+    # Returns
+    - `S`: structure containing the parameters, data, and results of the model fit.
+   
+    # Description
+
+    The `fit_EM` function implements the EM algorithm to estimate the parameters of a probabilistic model. 
+    It iteratively performs:
+        1. Expectation (E) step, computing the expected value of the log-likelihood with respect to the current parameter estimates
+        2. Maximization (M) step, updating the parameters to maximize this expected log-likelihood
+        3. Checks for convergence of the log-likelihood and stops if the change is below a threshold.
+
     """
 
-    @assert ~all(S.est.xx_init .== 0) && ~all(S.est.yy_obs .== 0);
+    # start the clock
     @reset S.res.startTime_em = Dates.format(now(), "mm/dd/yyyy HH:MM:SS");
 
-    # run tests
-    if S.prm.max_iter_em > 100
-        # run tests
-        StateSpaceAnalysis.run_tests(S)
+    # check that estimates are initialized
+    if all(S.est.xx_init .== 0) || all(S.est.yy_obs .== 0);
+        @reset S.est = deepcopy(set_estimates(S));
     end
 
 
     # main EM loop ===================================================================
-    for ii = 1:S.prm.max_iter_em
+    for em_iter = 1:S.prm.max_iter_em
 
         # ==== E-STEP ================================================================
         @inline StateSpaceAnalysis.ESTEP!(S);
@@ -30,46 +46,62 @@ function fit_EM(S);
         StateSpaceAnalysis.total_loglik!(S)
         
 
-        # checks & cleaning ==========================================================
+        # check loglik ==========================================================
 
         # confirm loglik is increasing
-        if (ii > 1)  && (S.res.total_loglik[ii] < S.res.total_loglik[ii-1])
+        if (em_iter > 1)  && (S.res.total_loglik[em_iter] < S.res.total_loglik[em_iter-1])
             println("warning: total loglik decreased (Δll: $(round(S.res.total_loglik[end] - S.res.total_loglik[end-1],digits=3)))")
         end
 
-        # test total loglik every N iters
-        if mod(ii,S.prm.test_iter) == 0
+        # test loglik every N iters
+        if mod(em_iter, S.prm.test_iter) == 0
 
             @reset S.est = deepcopy(set_estimates(S));
             StateSpaceAnalysis.test_loglik!(S);
-            push!(S.res.test_R2_white, LL_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
+            push!(S.res.test_R2_white, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
 
             if length(S.res.test_loglik) > 1
-                println("[$(ii)] total ll: $(round(S.res.total_loglik[ii],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), Δll: $(round(S.res.total_loglik[end] - S.res.total_loglik[end-1],digits=2)) // test R2:$(round(S.res.test_R2_white[end],digits=4))")
+                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), Δll: $(round(S.res.total_loglik[end] - S.res.total_loglik[end-1],digits=2)) // test R2:$(round(S.res.test_R2_white[end],digits=4))")
             else
-                println("[$(ii)] total ll: $(round(S.res.total_loglik[ii],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), test R2:$(round(S.res.test_R2_white[end],digits=4))")
+                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), test R2:$(round(S.res.test_R2_white[end],digits=4))")
             end
 
         end
 
-        # check for convergence
-        if (length(S.res.test_loglik) > 1) &&
-            (
-                ((S.res.total_loglik[end] - S.res.total_loglik[end-1]) < 1) ||                        # training fit converged
-                (S.prm.early_stop && ((S.res.test_loglik[end] - S.res.test_loglik[end-1]) < 1e-3))    # testing fit converged
-            );
 
-            println("")
-            println("----- converged! -----")
-            println("Δ total (training) loglik: $(S.res.total_loglik[end] - S.res.total_loglik[end-1])")
-            println("Δ test loglik: $(S.res.test_loglik[end] - S.res.test_loglik[end-1])")
-            println("")
-            println("")
+        # check for convergence
+
+        # total loglik covergence
+        if (em_iter > S.prm.check_train_iter) && 
+            ((S.res.total_loglik[end] - S.res.total_loglik[end-1]) < S.prm.train_threshold)
+
+            println("\n----- converged! -----")
+            println("Δ total loglik: $(S.res.total_loglik[end] - S.res.total_loglik[end-1])")
+            if length(S.res.test_loglik) > 1
+                println("Δ test loglik: $(S.res.test_loglik[end] - S.res.test_loglik[end-1])")
+            end
+            println("\n\n")
+
             break
+
+        end
+
+        # test loglik covergence
+        if (length(S.res.test_loglik) > 1) &&
+            (S.prm.early_stop && ((S.res.test_loglik[end] - S.res.test_loglik[end-1]) < S.prm.test_threshold))
+
+            println("\n----- converged! -----")
+            println("Δ total loglik: $(S.res.total_loglik[end] - S.res.total_loglik[end-1])")
+            println("Δ test loglik: $(S.res.test_loglik[end] - S.res.test_loglik[end-1])")
+            println("\n\n")
+
+
+            break
+
         end
 
         # garbage collect every 10 iter
-        if (mod(ii,10) == 0) && Sys.islinux() 
+        if (mod(em_iter,10) == 0) && Sys.islinux() 
             ccall(:malloc_trim, Cvoid, (Cint,), 0);
             ccall(:malloc_trim, Int32, (Int32,), 0);
             GC.gc(true);
@@ -84,7 +116,7 @@ function fit_EM(S);
     StateSpaceAnalysis.test_loglik!(S);
     P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
 
-    push!(S.res.test_R2_white, LL_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
+    push!(S.res.test_R2_white, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
     push!(S.res.test_R2_orig, 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[end]));
     
     @reset S.res.fwd_R2_white = 1.0 .- (P.sse_fwd_white ./ S.res.null_sse_white[1]);            
@@ -355,13 +387,13 @@ function init_moments!(S)
 
     S.est.yy_dyn .= sum(S.est.smooth_cov[2:end]) * S.dat.n_train;
 
-    S.est.n_dyn .= (S.dat.n_times-1) * S.dat.n_train;
+    S.est.n_dyn .= (S.dat.n_steps-1) * S.dat.n_train;
 
 
     # obs ===============================================
     S.est.xx_obs .= sum(S.est.smooth_cov) * S.dat.n_train;
     S.est.xy_obs .= zeros(S.dat.x_dim, S.dat.y_dim);
-    S.est.n_obs .= S.dat.n_times * S.dat.n_train;
+    S.est.n_obs .= S.dat.n_steps * S.dat.n_train;
 
 
 end

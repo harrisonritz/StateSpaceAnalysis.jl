@@ -81,8 +81,7 @@ end
 
 
 
-# random parameters
-
+# init random parameters
 function init_param_rand(S)
 
 
@@ -101,6 +100,37 @@ function init_param_rand(S)
     @reset S.mdl = set_model(;A=A, B=B, Q=Q, C=C, R=R, B0=B0, P0=P0);
 
     return S
+
+end
+
+
+
+
+# report R2
+
+ll_R2(S, test_loglik, null_loglik) = 1.0 - exp((2.0 /(S.dat.n_test*S.dat.n_steps*S.dat.y_dim)) * (null_loglik - test_loglik));
+
+function report_R2(S)
+
+    test_white_loglik = StateSpaceAnalysis.test_loglik(S);
+    P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
+
+    loglik_R2 = zeros(Float64, length(S.res.null_loglik));
+    sse_R2_white = zeros(Float64, length(S.res.null_loglik));
+    sse_R2_orig = zeros(Float64, length(S.res.null_loglik));
+
+
+    for ii in eachindex(S.res.null_loglik)
+
+        loglik_R2[ii] = ll_R2(S, test_white_loglik[end], S.res.null_loglik[ii])
+        sse_R2_white[ii] = 1.0 - (P.sse_white[1] / S.res.null_sse_white[ii]);
+        sse_R2_orig[ii] = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[ii]);
+
+        println("$(S.res.null_names[ii]) R2: ll R2=$(round(loglik_R2[ii], digits=4)); sse R2=$(round(sse_R2_white[ii], digits=4))(white), $(round(sse_R2_orig[ii], digits=4))(orig)")
+    end
+
+    println("lookahead sse R2:\n$(round.(1.0 .- (P.sse_fwd_white / S.res.null_sse_white[1]), digits=2)) (white)\n$(round.(1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]), digits=2)) (orig)")
+
 
 end
 

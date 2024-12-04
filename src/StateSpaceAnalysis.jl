@@ -10,15 +10,12 @@ using FileIO
 using MAT
 using Dates
 using Accessors
-using LegendrePolynomials
 using MultivariateStats
 using PDMats
 using SpecialFunctions
 using Serialization
 using ControlSystems
 using ControlSystemIdentification
-
-
 using BSplines
 using OffsetArrays
 
@@ -27,22 +24,6 @@ try
 catch
     println("NO MATLAB")
 end
-
-
-# add folders to path
-# if Sys.isapple()
-
-#     push!(LOAD_PATH, "$(pwd())/likelihoods");
-#     push!(LOAD_PATH, "$(pwd())/_wrappers");
-#     push!(LOAD_PATH, "$(pwd())/EM");
-
-# else
-
-#     push!(LOAD_PATH, "$(pwd())/../likelihoods");
-#     push!(LOAD_PATH, "$(pwd())/../_wrappers");
-#     push!(LOAD_PATH, "$(pwd())/../EM");
-
-# end
 
 
 
@@ -86,6 +67,7 @@ include("utils/utils.jl")
 export zsel, zsel_tall, zdim, init_PD, tol_PD, init_PSD, tol_PSD, diag_PD, format_noise, sumsqr, split_list, demix, remix
 export init_param_rand
 export format_B_preSSID, format_B_postSSID
+export report_R2, ll_R2
 
 # include("utils/make_plots.jl")
 # export report_R2

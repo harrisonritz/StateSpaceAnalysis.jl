@@ -15,11 +15,9 @@ using Revise # this is for development
 # EDIT THIS!
 run_cluster = length(ARGS)!=0;
 if run_cluster
-    root_path = "YOUR_CLUSTER_ROOT_PATH"
     save_path = "YOUR_CLUSTER_SAVE_PATH";
     load_path = "YOUR_CLUSTER_LOAD_PATH"
 else
-    root_path =  pkgdir(StateSpaceAnalysis, "src")
     save_path =  pkgdir(StateSpaceAnalysis, "example")
     load_path =  pkgdir(StateSpaceAnalysis, "example", "example-data")
 end
@@ -58,7 +56,6 @@ println("========================================\n")
 S = core_struct(
     prm=param_struct(
 
-        root_path = root_path,
         save_path = save_path,
         load_path = load_path,
 
@@ -86,7 +83,7 @@ S = core_struct(
         ssid_save =  length(ARGS) > 3 ? parse(Bool, ARGS[4]) : false, # SAVE SSID AND THEN EXIT
 
         ssid_type = :CVA,
-        ssid_lag = run_cluster ? 128 : 24,
+        ssid_lag = run_cluster ? 128 : 16,
         ), 
 
     dat=data_struct(
@@ -94,21 +91,17 @@ S = core_struct(
         sel_event = 2:4,
 
         pt = 1, # pt default
-        x_dim = 24 , # x_dim default
+        x_dim = 16 , # x_dim default
 
         basis_name = "bspline",
-        spline_gap = 5, # number of samples between spline knots
-        norm_basis = false, # normalize every timepoint in basis with 2-norm
+        spline_gap = 5, # spline knots optimized for every n timesteps
 
         pred_list = [
-            "taskRepeat", "taskSwitch", 
-            "switch",
-            "RT", "prevRT", 
-            "cueColor", "cueShape", "cueRepeat",
+            "task",
             ],
 
         pred0_list = [
-            "prevTask", "RT", "prevRT", 
+            "prevTask",
             ],
 
 

@@ -1,6 +1,7 @@
 
 function preprocess_fit(S)
 
+    
     # READ ARGS ==============================================
     S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
     # =============================================================
@@ -42,9 +43,9 @@ function preprocess_fit(S)
 
     # REPORT DATA ==============================================
     println("\n========== FIT INFO ==========")
-    println("root path: $(S.prm.root_path)")
-    println("load name: $(S.prm.load_name)")
     println("load path: $(S.prm.load_path)")
+    println("load name: $(S.prm.load_name)")
+    println("save path: $(S.prm.save_path)")
     println("save name: $(S.prm.save_name)")
 
     println("participant: $(S.dat.pt)")
@@ -63,7 +64,7 @@ function preprocess_fit(S)
     println("training trials: $(S.dat.n_train)");
     println("testing trials: $(S.dat.n_test)");
     println("number of channels: $(S.dat.n_chans)")
-    println("time inverval: $(minimum(S.dat.ts[S.dat.sel_times]))s to $(maximum(S.dat.ts[S.dat.sel_times]))s; timepoints: $(length(S.dat.ts[S.dat.sel_times]))")
+    println("time inverval: $(minimum(S.dat.ts[S.dat.sel_steps]))s to $(maximum(S.dat.ts[S.dat.sel_steps]))s; timepoints: $(length(S.dat.ts[S.dat.sel_steps]))")
     println("Q type: $(S.prm.Q_type) / R type: $(S.prm.R_type) / P0 type: $(S.prm.P0_type)")
     println("========================================\n")
     #  =======================================================================

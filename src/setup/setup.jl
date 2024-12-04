@@ -128,26 +128,26 @@ function load_data(S)
     # select time points
     if !isempty(S.dat.events)
         if !isempty(S.dat.sel_event)
-            @reset S.dat.sel_times = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
+            @reset S.dat.sel_steps = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
         else
-            @reset S.dat.sel_times = trues(size(raw_data["y"],2));
+            @reset S.dat.sel_steps = trues(size(raw_data["y"],2));
         end
-        @reset S.dat.n_times = sum(S.dat.sel_times);
-        @reset S.dat.events = S.dat.events[S.dat.sel_times];
+        @reset S.dat.n_steps = sum(S.dat.sel_steps);
+        @reset S.dat.events = S.dat.events[S.dat.sel_steps];
     else
-        @reset S.dat.sel_times = trues(size(raw_data["y"],2));
-        @reset S.dat.n_times = sum(S.dat.sel_times);
+        @reset S.dat.sel_steps = trues(size(raw_data["y"],2));
+        @reset S.dat.n_steps = sum(S.dat.sel_steps);
         @reset S.dat.events = ones(size(raw_data["y"],2));
     end
 
 
     # setup EEG data
     # train
-    @reset S.dat.y_train_orig = raw_data["y"][:,S.dat.sel_times,S.dat.sel_train];
+    @reset S.dat.y_train_orig = raw_data["y"][:,S.dat.sel_steps,S.dat.sel_train];
     @reset S.dat.n_train = size(S.dat.y_train_orig,3);
 
     # test
-    @reset S.dat.y_test_orig =raw_data["y"][:,S.dat.sel_times,S.dat.sel_test];
+    @reset S.dat.y_test_orig =raw_data["y"][:,S.dat.sel_steps,S.dat.sel_test];
     @reset S.dat.n_test = size(S.dat.y_test_orig,3);
 
     # setup predictors
@@ -224,7 +224,7 @@ function build_inputs(S)
 
         
         # check collinearity
-        ul = deepcopy(reshape(u, S.dat.u_dim, S.dat.n_times*n_trials)');
+        ul = deepcopy(reshape(u, S.dat.u_dim, S.dat.n_steps*n_trials)');
         f=svd(ul);
 
         # build initial state list
@@ -299,12 +299,12 @@ end
 function whiten(S)
 # orthogonalize data
 
-    y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_times*S.dat.n_train);
+    y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_steps*S.dat.n_train);
     @reset S = deepcopy(transform_observations(S, y_long));
 
 
     # transform train ==================================
-    y_train = zeros(S.dat.y_dim, S.dat.n_times, S.dat.n_train);
+    y_train = zeros(S.dat.y_dim, S.dat.n_steps, S.dat.n_train);
     for tt in axes(y_train,3)
         y_train[:,:,tt] = StateSpaceAnalysis.demix(S, S.dat.y_train_orig[:,:,tt]);
     end
@@ -312,7 +312,7 @@ function whiten(S)
 
 
     # transform test ==================================
-    y_test = zeros(S.dat.y_dim, S.dat.n_times, S.dat.n_test);
+    y_test = zeros(S.dat.y_dim, S.dat.n_steps, S.dat.n_test);
     for tt in axes(y_test,3)
         y_test[:,:,tt] = StateSpaceAnalysis.demix(S, S.dat.y_test_orig[:,:,tt]);
     end

@@ -17,7 +17,7 @@ function generate_PPC(S,trial)
                                             S.mdl.C, S.mdl.R, 
                                             S.mdl.B0, S.mdl.P0,
                                             S.dat.u_test[:,:,trial], S.dat.u0_test[:,trial],
-                                            S.dat.n_times, 1);                
+                                            S.dat.n_steps, 1);                
     mean_orig_yhat = remix(S, mean_yhat[:,:,1]);
 
 
@@ -96,8 +96,8 @@ function plot_temp_cov(S, trial)
     res_x = (S.mdl.A*P.smooth_mean[:,1:end-1,1] .+ S.mdl.B*S.dat.u_test[:,1:end-1,trial]) - P.smooth_mean[:,2:end,1];      
     res_y = (S.mdl.C*P.smooth_mean[:,:,1]) - S.dat.y_test[:,:,trial];
     
-    plt_x = heatmap((res_x'*res_x)/(S.dat.n_times-1), title="temporal covariance of residuals (x)", xlabel="time", ylabel="time", color=:viridis)
-    plt_y = heatmap((res_y'*res_y)/(S.dat.n_times), title="temporal covariance of residuals (y)", xlabel="time", ylabel="time", color=:viridis)
+    plt_x = heatmap((res_x'*res_x)/(S.dat.n_steps-1), title="temporal covariance of residuals (x)", xlabel="time", ylabel="time", color=:viridis)
+    plt_y = heatmap((res_y'*res_y)/(S.dat.n_steps), title="temporal covariance of residuals (y)", xlabel="time", ylabel="time", color=:viridis)
     plot(plt_x, plt_y, layout=(1,2), size=(800,400))
 
 end
@@ -171,31 +171,6 @@ end
 
 
 
-LL_R2(S, test_loglik, null_loglik) = 1.0 - exp((2.0 /(S.dat.n_test*S.dat.n_times*S.dat.y_dim)) * (null_loglik - test_loglik));
-
-function report_R2(S)
-
-    test_white_loglik = StateSpaceAnalysis.test_loglik(S);
-    P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
-
-    loglik_R2 = zeros(Float64, length(S.res.null_loglik));
-    sse_R2_white = zeros(Float64, length(S.res.null_loglik));
-    sse_R2_orig = zeros(Float64, length(S.res.null_loglik));
-
-
-    for ii in eachindex(S.res.null_loglik)
-
-        loglik_R2[ii] = LL_R2(S, test_white_loglik[end], S.res.null_loglik[ii])
-        sse_R2_white[ii] = 1.0 - (P.sse_white[1] / S.res.null_sse_white[ii]);
-        sse_R2_orig[ii] = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[ii]);
-
-        println("$(S.res.null_names[ii]) R2: ll R2=$(round(loglik_R2[ii], digits=4)); sse R2=$(round(sse_R2_white[ii], digits=4))(white), $(round(sse_R2_orig[ii], digits=4))(orig)")
-    end
-
-    println("lookahead sse R2:\n$(round.(1.0 .- (P.sse_fwd_white / S.res.null_sse_white[1]), digits=2)) (white)\n$(round.(1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]), digits=2)) (orig)")
-
-
-end
 
 
 
@@ -243,7 +218,7 @@ function plot_params(S)
                         xticks=(1:length(S.dat.pred_name),S.dat.pred_name), xrotation = 90, 
                         yticks=(1:length(S.dat.pred_name),S.dat.pred_name))
 
-    ul = reshape(S.dat.u_train, S.dat.u_dim, S.dat.n_times*S.dat.n_train)';
+    ul = reshape(S.dat.u_train, S.dat.u_dim, S.dat.n_steps*S.dat.n_train)';
     plt_Uc = heatmap(   LowerTriangular(cov(ul)), title="cor(U)", color=:coolwarm, aspect_ratio=1, clims=(-.33,.33), 
                         xticks=(1:length(S.dat.pred_name),S.dat.pred_name), xrotation = 90, 
                         yticks=(1:length(S.dat.pred_name),S.dat.pred_name));
@@ -294,7 +269,7 @@ function plot_bal_params(S)
                         xticks=(1:length(S.dat.pred_name),S.dat.pred_name), xrotation = 90, 
                         yticks=(1:length(S.dat.pred_name),S.dat.pred_name));
 
-    ul = reshape(S.dat.u_train, S.dat.u_dim, S.dat.n_times*S.dat.n_train)';
+    ul = reshape(S.dat.u_train, S.dat.u_dim, S.dat.n_steps*S.dat.n_train)';
     plt_Uc = heatmap(   LowerTriangular(cov(ul)), title="cor(U)", color=:coolwarm, aspect_ratio=1, clims=(-.33,.33), 
                         xticks=(1:length(S.dat.pred_name),S.dat.pred_name), xrotation = 90, 
                         yticks=(1:length(S.dat.pred_name),S.dat.pred_name));
@@ -354,7 +329,7 @@ function plot_input_diffusion(S; input_name = "task", mod_name = "task@switch", 
     basis = S.dat.u_train[base_sel,:,1];
 
     BB_0, BB_P, BB_N = zeros(size(A)), zeros(size(A)), zeros(size(A));
-    W_0, W_P, W_N = zeros(S.dat.n_times,1), zeros(S.dat.n_times,1), zeros(S.dat.n_times,1);
+    W_0, W_P, W_N = zeros(S.dat.n_steps,1), zeros(S.dat.n_steps,1), zeros(S.dat.n_steps,1);
     
     for cc in eachindex(W_0)
 
@@ -382,15 +357,15 @@ function plot_input_diffusion(S; input_name = "task", mod_name = "task@switch", 
     end
 
 
-    global plt_in=plot(0:S.dat.n_times,[0;W_0], title="input diffusion ($(input_name))", xlabel="time", ylabel="trace(W_t)", legend=false, color=:black, linewidth=3)
+    global plt_in=plot(0:S.dat.n_steps,[0;W_0], title="input diffusion ($(input_name))", xlabel="time", ylabel="trace(W_t)", legend=false, color=:black, linewidth=3)
     if S.dat.epoch[1] == 1
         plt_in=vline!([findfirst(S.dat.epoch .== 2)], color=:red, linestyle=:dash, label="")
     end
     plt_in=vline!([findlast(S.dat.epoch .== 2)], color=:red, linestyle=:dash)
     plt_in=vline!([findlast(S.dat.epoch .== 3)], color=:red, linestyle=:dash)
 
-    global plt_mod=plot(0:S.dat.n_times,[0;W_P], title="input contrast diffusion ($(input_name))", xlabel="time", ylabel="trace(W_t)", label="$(mod_name) +", color=:green, linewidth=3)
-    plt_mod=plot!(0:S.dat.n_times,[0;W_N],label="$(mod_name) -", color=:red, linewidth=3)
+    global plt_mod=plot(0:S.dat.n_steps,[0;W_P], title="input contrast diffusion ($(input_name))", xlabel="time", ylabel="trace(W_t)", label="$(mod_name) +", color=:green, linewidth=3)
+    plt_mod=plot!(0:S.dat.n_steps,[0;W_N],label="$(mod_name) -", color=:red, linewidth=3)
     
     if S.dat.epoch[1] == 1
         plt_mod=vline!([findfirst(S.dat.epoch .== 2)], color=:red, linestyle=:dash, label="")
@@ -429,7 +404,7 @@ function plot_2input_diffusion(S; input1_name = "task", input2_name = "task@swit
     basis = S.dat.u_train[base_sel,:,1];
 
     BB_1, BB_2 = zeros(size(A)), zeros(size(A));
-    W_1, W_2 = zeros(S.dat.n_times,1), zeros(S.dat.n_times,1);
+    W_1, W_2 = zeros(S.dat.n_steps,1), zeros(S.dat.n_steps,1);
     
     for cc in eachindex(W_1)
 
@@ -452,9 +427,9 @@ function plot_2input_diffusion(S; input1_name = "task", input2_name = "task@swit
     end
 
 
-    global plt_in=plot(0:S.dat.n_times,[0;W_1], title="input diffusion", xlabel="time", ylabel="trace(W_t)", label="$(input1_name)", color=:green, linewidth=3)
+    global plt_in=plot(0:S.dat.n_steps,[0;W_1], title="input diffusion", xlabel="time", ylabel="trace(W_t)", label="$(input1_name)", color=:green, linewidth=3)
 
-    plt_in=plot!(0:S.dat.n_times,[0;W_2], label="$(input2_name)", color=:red, linewidth=3)
+    plt_in=plot!(0:S.dat.n_steps,[0;W_2], label="$(input2_name)", color=:red, linewidth=3)
     if S.dat.epoch[1] == 1
         plt_in=vline!([findfirst(S.dat.epoch .== 2)], color=:red, linestyle=:dash, label="")
     end

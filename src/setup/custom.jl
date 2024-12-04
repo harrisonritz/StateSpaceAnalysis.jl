@@ -67,13 +67,13 @@ function create_input_basis(S, n_trials)
         if S.dat.n_splines > 0
 
             @reset S.dat.n_bases = S.dat.n_splines;
-            basis = averagebasis(4, LinRange(1, S.dat.n_times, S.dat.n_bases));
+            basis = averagebasis(4, LinRange(1, S.dat.n_steps, S.dat.n_bases));
             pred_basis = ["spline" for _ in 1:S.dat.n_bases];
 
         elseif S.dat.spline_gap > 0
 
-            @reset S.dat.n_bases = round(S.dat.n_times/S.dat.spline_gap);
-            basis = averagebasis(4, LinRange(1, S.dat.n_times, S.dat.n_bases));
+            @reset S.dat.n_bases = round(S.dat.n_steps/S.dat.spline_gap);
+            basis = averagebasis(4, LinRange(1, S.dat.n_steps, S.dat.n_bases));
             pred_basis = ["spline" for _ in 1:S.dat.n_bases];
 
         else
@@ -82,7 +82,7 @@ function create_input_basis(S, n_trials)
         @reset S.dat.u_dim = S.dat.n_misc + S.dat.n_bases + (S.dat.n_bases*S.dat.n_pred);
 
         # construct basis
-        u = zeros(S.dat.u_dim, S.dat.n_times, n_trials); 
+        u = zeros(S.dat.u_dim, S.dat.n_steps, n_trials); 
 
         normalize_col(A,d=1) = A ./ (sqrt.(sum(abs2,A,dims=d)))
         for tt in axes(u,2)
