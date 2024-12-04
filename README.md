@@ -12,26 +12,24 @@ This package provides tools for preprocessing data, fitting models, and evaluati
 
 ### Event-related designs
 
-Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials).
+Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials).*StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch. 
 
-*StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch. 
 &nbsp;  
 
 
 ### High-dimensional Systems
 
-Whole-brain modelling may require a large number of latent factors. 
+Whole-brain modelling may require a large number of latent factors. *StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization. 
 
-*StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization. 
 &nbsp;  
 
 
 ### Data-driven Initialization
 
-We need good initialization for systems where we don't have great domain knowledge (especially when there are many latent factors!).
+We need good initialization for systems where we don't have great domain knowledge (especially when there are many latent factors! *StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
 
-*StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
 &nbsp;
+
 
 ## Installation
 
@@ -99,10 +97,10 @@ StateSpaceAnalysis.setup_path(S)
 # load and format the data; split for cross-validation
 S = deepcopy(StateSpaceAnalysis.load_data(S));
 
-# build the input matrices
+# build the input tenors (e.g., z-score and convolve with basis)
 S = deepcopy(StateSpaceAnalysis.build_inputs(S));
 
-# transform the observed data
+# transform the observed data (PCA)
 S = deepcopy(StateSpaceAnalysis.whiten(S));
 
 # fit baseline models to the data
@@ -110,7 +108,7 @@ StateSpaceAnalysis.null_loglik!(S);
 
 # initialize the expectations and parameters
 @reset S.est = deepcopy(set_estimates(S));
-@reset S = deepcopy(gen_rand_params(S));
+@reset S = deepcopy(generate_rand_params(S));
 ```
 
 ### Warm-start the EM with initial parameters from Subspace Identification (SSID):
