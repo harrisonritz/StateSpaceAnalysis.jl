@@ -140,8 +140,8 @@ if do_custom
 
         
         
-        # Test for test_rep_ESTEP function
-        @testset "test_rep_ESTEP" begin
+        # Test the multple E-steps don't interact
+        @testset "test_multiple_ESTEP" begin
             S = core_struct(
                 prm=param_struct(
                     load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
@@ -154,8 +154,31 @@ if do_custom
                 mdl=model_struct(),
                 );
             S = StateSpaceAnalysis.preprocess_fit(S);
-            result = test_rep_ESTEP(S)
-            @test sum(result.^2) ≈ 0.0
+
+            StateSpaceAnalysis.ESTEP!(S);
+            M1 = deepcopy(S.est);
+        
+            StateSpaceAnalysis.ESTEP!(S);
+            M2 = deepcopy(S.est);
+        
+        
+            rep_norm = zeros(0);
+
+            sumsqr(x) = sum(x.^2)
+        
+            push!(rep_norm, sumsqr(M1.xx_init .- M2.xx_init))
+            push!(rep_norm, sumsqr(M1.xy_init .- M2.xy_init))
+            push!(rep_norm, sumsqr(M1.yy_init .- M2.yy_init));
+        
+            push!(rep_norm, sumsqr(M1.xx_dyn .- M2.xx_dyn));
+            push!(rep_norm, sumsqr(M1.xy_dyn .- M2.xy_dyn));
+            push!(rep_norm, sumsqr(M1.yy_dyn .- M2.yy_dyn));
+        
+            push!(rep_norm, sumsqr(M1.xx_obs .- M2.xx_obs))
+            push!(rep_norm, sumsqr(M1.xy_obs .- M2.xy_obs))
+            push!(rep_norm, sumsqr(M1.yy_obs .- M2.yy_obs));
+
+            @test all(rep_norm .≈ 0.0)
         end
 
 

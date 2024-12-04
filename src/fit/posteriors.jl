@@ -12,23 +12,23 @@ function posterior_all(S, y, y_orig, u, u0)
 
     P = post_all(
 
-            pred_mean = zeros(S.dat.x_dim, S.dat.n_times,n_trials),
-            filt_mean = zeros(S.dat.x_dim, S.dat.n_times,n_trials),
-            smooth_mean = zeros(S.dat.x_dim, S.dat.n_times,n_trials),
+            pred_mean = zeros(S.dat.x_dim, S.dat.n_steps,n_trials),
+            filt_mean = zeros(S.dat.x_dim, S.dat.n_steps,n_trials),
+            smooth_mean = zeros(S.dat.x_dim, S.dat.n_steps,n_trials),
 
-            pred_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times] for _ in 1:n_trials],
-            filt_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times] for _ in 1:n_trials],
-            smooth_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times] for _ in 1:n_trials],
+            pred_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps] for _ in 1:n_trials],
+            filt_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps] for _ in 1:n_trials],
+            smooth_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps] for _ in 1:n_trials],
 
-            obs_white_y = zeros(S.dat.y_dim, S.dat.n_times,n_trials),
-            pred_white_y = zeros(S.dat.y_dim, S.dat.n_times,n_trials),
-            filt_white_y = zeros(S.dat.y_dim, S.dat.n_times,n_trials),
-            smooth_white_y = zeros(S.dat.y_dim, S.dat.n_times,n_trials),
+            obs_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            pred_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            filt_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            smooth_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
 
-            obs_orig_y = zeros(S.dat.n_chans, S.dat.n_times,n_trials),
-            pred_orig_y = zeros(S.dat.n_chans, S.dat.n_times,n_trials),
-            filt_orig_y = zeros(S.dat.n_chans, S.dat.n_times,n_trials),
-            smooth_orig_y = zeros(S.dat.n_chans, S.dat.n_times,n_trials),
+            obs_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
+            pred_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
+            filt_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
+            smooth_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
 
             sse_white = [0.0],
             sse_orig = [0.0],
@@ -128,9 +128,9 @@ function posterior_mean(S, y, y_orig, u, u0)
 
     # initialize output ==========================
     P = post_mean(
-            pred_mean = zeros(S.dat.x_dim, S.dat.n_times, size(y,3)),
-            filt_mean = zeros(S.dat.x_dim, S.dat.n_times, size(y,3)),
-            smooth_mean = zeros(S.dat.x_dim, S.dat.n_times, size(y,3)),
+            pred_mean = zeros(S.dat.x_dim, S.dat.n_steps, size(y,3)),
+            filt_mean = zeros(S.dat.x_dim, S.dat.n_steps, size(y,3)),
+            smooth_mean = zeros(S.dat.x_dim, S.dat.n_steps, size(y,3)),
         );
 
 

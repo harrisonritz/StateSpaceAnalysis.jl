@@ -65,6 +65,7 @@
 
     save_path::String = pkgdir(StateSpaceAnalysis)
     do_save::Bool = false
+    write_mat::Bool = true
 
 end
 
@@ -302,8 +303,8 @@ end
     CiRY::Matrix{Float64} = zeros(0,0)
 
     # temp
-    xdim_temp::Memory{Float64} = zeros(0)
-    ydim_temp::Memory{Float64} = zeros(0)
+    xdim_temp::Vector{Float64} = zeros(0)
+    ydim_temp::Vector{Float64} = zeros(0)
     xdim2_temp::Matrix{Float64} = zeros(0,0)
     x_cur::Matrix{Float64} = zeros(0,0)
     x_next::Matrix{Float64} = zeros(0,0)

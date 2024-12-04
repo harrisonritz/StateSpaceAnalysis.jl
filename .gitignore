@@ -1,3 +1,5 @@
 /Manifest.toml
 /example/fit-results
 .DS_Store
+/*/fit-results
+fit-results

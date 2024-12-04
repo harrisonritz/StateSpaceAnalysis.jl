@@ -1,6 +1,10 @@
 
 # ===== LOGLIK =================================================================
 
+ll_R2(S, test_loglik, null_loglik) = 1.0 - exp((2.0 /(S.dat.n_test*S.dat.n_steps*S.dat.y_dim)) * (null_loglik - test_loglik));
+
+
+
 log_post_v0(n,v,v0,vN,lam0,lamN,Sig0,SigN) =    -0.5*n*v*log(2pi) .+
                                                 0.5*v*logdet(lam0) .+ 
                                                 -0.5*v*logdet(lamN) .+

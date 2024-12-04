@@ -10,13 +10,11 @@ using Revise # this is for development
 
 
 
-
 # SET PATHS =============================================================
-# EDIT THIS!
-run_cluster = length(ARGS)!=0;
-if run_cluster
-    save_path = "YOUR_CLUSTER_SAVE_PATH";
-    load_path = "YOUR_CLUSTER_LOAD_PATH"
+run_cluster = false; # set cluster conditional here
+if run_cluster # set cluster paths here
+    save_path = "YOUR_CLUSTER_SAVE_PATH"; 
+    load_path = "YOUR_CLUSTER_LOAD_PATH";
 else
     save_path =  pkgdir(StateSpaceAnalysis, "example")
     load_path =  pkgdir(StateSpaceAnalysis, "example", "example-data")
@@ -71,15 +69,14 @@ S = core_struct(
 
         x_dim_fast = round.(Int64, 16:16:128),
         
-        
-        do_save = run_cluster ? true : false, 
+        do_save = run_cluster ? true : true, 
 
         y_transform = "PCA",
         PCA_ratio = .99,
 
         do_trial_sel = true, # only epochs with current & previous accurate
 
-        ssid_fit = length(ARGS) > 2 ? ARGS[3] : "fit", # fit, load
+        ssid_fit = length(ARGS) > 2 ? ARGS[3] : "fit", # "fit"/"load"; "fit" new SSID, or "load" existing SSID
         ssid_save =  length(ARGS) > 3 ? parse(Bool, ARGS[4]) : false, # SAVE SSID AND THEN EXIT
 
         ssid_type = :CVA,
@@ -168,25 +165,27 @@ println("Finished fit at $(Dates.format(now(), "mm/dd/yyyy HH:MM:SS"))")
 
 # PLOT DIAGNOSTICS =======================================================================
 
-do_plots = false
-if do_plots
-    try
+# TODO: implement plotting functions
+# do_plots = false
+# if do_plots
+#     try
 
-        # plot loglik traces
-        StateSpaceAnalysis.plot_loglik_traces(S)
+#         # plot loglik traces
+#         StateSpaceAnalysis.plot_loglik_traces(S)
 
         
-        # plot posterior predictive checks        
-        StateSpaceAnalysis.plot_avg_pred(S)
+#         # plot posterior predictive checks        
+#         StateSpaceAnalysis.plot_avg_pred(S)
 
 
-        # plot model
-        StateSpaceAnalysis.plot_params(S)
+#         # plot model
+#         StateSpaceAnalysis.plot_params(S)
 
 
-    catch
-    end
-end
+#     catch
+#     end
+# end
+
 #  =======================================================================
 
 
@@ -197,7 +196,7 @@ if S.prm.do_save
 
     println("\n========== SAVING FIT ==========")
 
-    save_results(S);
+    StateSpaceAnalysis.save_results(S);
 
 else
     println("\n========== *NOT* SAVING FIT ==========")

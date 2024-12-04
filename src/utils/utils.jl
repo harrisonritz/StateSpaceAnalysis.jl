@@ -106,9 +106,7 @@ end
 
 
 
-# report R2
-
-ll_R2(S, test_loglik, null_loglik) = 1.0 - exp((2.0 /(S.dat.n_test*S.dat.n_steps*S.dat.y_dim)) * (null_loglik - test_loglik));
+# report parameters and fit
 
 function report_R2(S)
 
@@ -119,20 +117,46 @@ function report_R2(S)
     sse_R2_white = zeros(Float64, length(S.res.null_loglik));
     sse_R2_orig = zeros(Float64, length(S.res.null_loglik));
 
-
+    println("Next-Step R-Squared ----------")
     for ii in eachindex(S.res.null_loglik)
 
         loglik_R2[ii] = ll_R2(S, test_white_loglik[end], S.res.null_loglik[ii])
         sse_R2_white[ii] = 1.0 - (P.sse_white[1] / S.res.null_sse_white[ii]);
         sse_R2_orig[ii] = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[ii]);
 
-        println("$(S.res.null_names[ii]) R2: ll R2=$(round(loglik_R2[ii], digits=4)); sse R2=$(round(sse_R2_white[ii], digits=4))(white), $(round(sse_R2_orig[ii], digits=4))(orig)")
+        println("$(S.res.null_names[ii]): loglik R2 = $(round(loglik_R2[ii], sigdigits=4)) (white) // SSE R2 = $(round(sse_R2_white[ii], digits=2)) (white), $(round(sse_R2_orig[ii], sigdigits=4)) (orig)")
     end
-
-    println("lookahead sse R2:\n$(round.(1.0 .- (P.sse_fwd_white / S.res.null_sse_white[1]), digits=2)) (white)\n$(round.(1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]), digits=2)) (orig)")
-
+    println("------------------------------")
+    println("Lookahead R-Squared ----------")
+    println("$(round.(1.0 .- (P.sse_fwd_white / S.res.null_sse_white[1]), digits=2)) (white)\n$(round.(1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]), digits=2)) (orig)")
+    println("------------------------------\n")
 
 end
+
+
+function report_params(S)
+
+
+    println("\n========== A ========== ")
+    display(S.mdl.A)
+    println("\n========== B ========== ")
+    display(S.mdl.B)
+    println("\n========== Q ========== ")
+    display(S.mdl.Q)
+
+    println("\n========== C ========== ")
+    display(S.mdl.C)
+    println("\n========== R ========== ")
+    display(S.mdl.R)
+
+    println("\n========== B0 ========== ")
+    display(S.mdl.B0)
+    println("\n========== P0 ========== ")
+    display(S.mdl.P0)
+
+end
+
+
 
 
 

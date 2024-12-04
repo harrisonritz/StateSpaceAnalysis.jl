@@ -171,11 +171,6 @@ end
 
 
 
-
-
-
-
-
 # format the B matrix for SSID
 function format_B_preSSID(S)
     # extract a subset of predictors to keep SSID well-posed

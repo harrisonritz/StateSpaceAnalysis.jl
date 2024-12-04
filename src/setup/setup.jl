@@ -5,7 +5,7 @@
 # read in arguements from command line
 function read_args(S, arg_in)
     """
-    read_args()
+        read_args(S::core_struct, arg_in::Array{String})
 
     Reads and processes the command-line arguments provided to the program.
     """
@@ -76,7 +76,7 @@ end
 # setup the directories for saving the results
 function setup_path(S)
     """
-    setup_path(S::Structure)
+        setup_path(S::core_struct)
 
     Sets up the directories for saving the results.
     """
@@ -167,6 +167,12 @@ end
 
 
 function build_inputs(S)
+    
+    """
+        build_inputs(S::core_struct)
+
+    Build system inputs.
+    """
 
     println("")
 
@@ -297,7 +303,13 @@ end
 
 
 function whiten(S)
-# orthogonalize data
+    """
+        whiten(S::core_struct)
+
+    transform the observations using PCA.
+    """
+
+    # orthogonalize data
 
     y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_steps*S.dat.n_train);
     @reset S = deepcopy(transform_observations(S, y_long));
@@ -326,41 +338,12 @@ end
 
 
 
-
-
-function test_rep_ESTEP(S)
-#  run ESTEP twice and compare results (should be zero)
-   
-
-    StateSpaceAnalysis.ESTEP!(S);
-    M1 = deepcopy(S.est);
-
-    StateSpaceAnalysis.ESTEP!(S);
-    M2 = deepcopy(S.est);
-
-
-    rep_norm = zeros(0);
-
-    push!(rep_norm, norm(M1.xx_init .- M2.xx_init))
-    push!(rep_norm, norm(M1.xy_init .- M2.xy_init))
-    push!(rep_norm, norm(M1.yy_init .- M2.yy_init));
-
-    push!(rep_norm, norm(M1.xx_dyn .- M2.xx_dyn));
-    push!(rep_norm, norm(M1.xy_dyn .- M2.xy_dyn));
-    push!(rep_norm, norm(M1.yy_dyn .- M2.yy_dyn));
-
-    push!(rep_norm, norm(M1.xx_obs .- M2.xx_obs))
-    push!(rep_norm, norm(M1.xy_obs .- M2.xy_obs))
-    push!(rep_norm, norm(M1.yy_obs .- M2.yy_obs));
-
-
-    return rep_norm
-
-end
-
-
-
 function generate_lds_parameters(S, Q_noise, R_noise, P0_noise)::NamedTuple
+    """
+        generate_lds_parameters(S::core_struct, Q_noise::Float64, R_noise::Float64, P0_noise::Float64)::NamedTuple
+
+    Generate the parameters for the LDS model.
+    """
 
     A = randn(S.dat.x_dim, S.dat.x_dim) + 5I;
     s,u = eigen(A); # get eigenvectors and eigenvals
@@ -389,8 +372,4 @@ function generate_lds_parameters(S, Q_noise, R_noise, P0_noise)::NamedTuple
     return sim
 
 end
-
-
-
-
 

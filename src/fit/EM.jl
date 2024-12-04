@@ -4,18 +4,14 @@
 
 function fit_EM(S); 
     """
-        fit_EM(S)
+        fit_EM(S::core_struct)
 
     Fit a probabilistic state-space model using the Expectation-Maximization (EM) algorithm.
 
-    # Arguments
-    - `S`: structure containing the parameters, data, and results of the model fit.
-
-    # Returns
-    - `S`: structure containing the parameters, data, and results of the model fit.
+    # Arguement and Output
+    - `S`: core_struct containing the parameters, data, and results of the model fit.
    
     # Description
-
     The `fit_EM` function implements the EM algorithm to estimate the parameters of a probabilistic model. 
     It iteratively performs:
         1. Expectation (E) step, computing the expected value of the log-likelihood with respect to the current parameter estimates
