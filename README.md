@@ -12,23 +12,17 @@ This package provides tools for preprocessing data, fitting models, and evaluati
 
 ### Event-related designs
 
-Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials).*StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch. 
-
-&nbsp;  
+Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials). *StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch.   
 
 
 ### High-dimensional Systems
 
-Whole-brain modelling may require a large number of latent factors. *StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization. 
-
-&nbsp;  
+Whole-brain modelling may require a large number of latent factors. *StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization.  
 
 
 ### Data-driven Initialization
 
 We need good initialization for systems where we don't have great domain knowledge (especially when there are many latent factors! *StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
-
-&nbsp;
 
 
 ## Installation
