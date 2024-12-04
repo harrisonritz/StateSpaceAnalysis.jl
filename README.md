@@ -9,14 +9,20 @@
 
 This package provides tools for preprocessing data, fitting models, and evaluating model performance, with methods especially tailored towards neuroimaging analysis:
 
-**Event-related designs**: Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials). 
+
+**Event-related designs**: Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials).
+
 *StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch. 
 
+
 **High-dimensional Systems**: Whole-brain modelling may require a large number of latent factors.  
-*StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via *PDMats.jl*), and regularization. 
+
+*StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization. 
+
 
 **Data-driven Initialization**: We need good initialization for systems where we don't have great domain knowledge (especially when there are many latent factors!).
-*StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from *ControlSystemsAnalysis.jl*.
+
+*StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
 
 
 ## Installation
@@ -156,7 +162,7 @@ StateSpaceAnalysis.save_results(S)
 - `save_results`: Saves the fitting results.
 
 ### `fit/SSID.jl`
-**These function are modifed from *ControlSystemsIdentification.jl***
+**These function are modifed from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl)**
 - `fit_SSID`: Performs subspace identification for state space analysis.
 - `subspaceid_SSA`: modified ControlSystemsIdentification.jl for SSID
 
