@@ -5,7 +5,15 @@
 
 ## Overview
 
-StateSpaceAnalysis.jl is a Julia package designed for fitting linear Gaussian state space models (lg-SSMs) using Subspace System Identification (SSID) and Expectation Maximization (EM) algorithms. This package provides tools for preprocessing data, fitting models, and evaluating model performance.
+StateSpaceAnalysis.jl is a Julia package designed for fitting linear-Gaussian state space models (SSMs) using Subspace System Identification (SSID) and Expectation Maximization (EM) algorithms. 
+
+This package provides tools for preprocessing data, fitting models, and evaluating model performance, with methods especially geared towards neuroimaging analysis:
+
+* event-related structure of Neuroimaging data. EEG/MEG often has batched sequences (e.g., states x timesteps x trials). We are custom-built for that case by (A) including spline bases for inputs and (B) re-using the filtered/smoothed covariance across batches to massive reduce compute time.
+
+* high-dimensional systems. We are designed around scaling through efficient memory allocation, robust covariance handling (via PDMats.jl), and regularization. This has allowed this packaged to work well for high-dimensional state space models (e.g., factor dim > observation dim).
+
+* data-driven initialization. Because using SSMs for task-based neuroimaging is relatively new, it is difficult to provide good initializations for state space models. My packages includes modified SSID functions from ControlSystemsAnalysis.jl (appropriately credited and consistent with their license -- incredibly grateful!). By use SSID, we get really good initializations, which are critical for high-dimensional SSMs.
 
 
 ## Installation
@@ -160,7 +168,7 @@ StateSpaceAnalysis.null_loglik!(S);
 @reset S = deepcopy(gen_rand_params(S));
 ```
 
-### get the initial conditions with Subspace Identification (SSID):
+### Warm-start the EM with initial parameters from Subspace Identification (SSID):
 ```julia
 if S.prm.ssid_fit == "fit" # if fitting the SSID
     @reset S = StateSpaceAnalysis.launch_SSID(S);
@@ -169,7 +177,7 @@ elseif S.prm.ssid_fit == "load" # if loading a previously-fit SSID
 end
 ```
 
-### get the initial conditions with Subspace Identification (SSID):
+### Fit the parameters use EM:
 ```julia
 @reset S = StateSpaceAnalysis.launch_EM(S);
 ```
