@@ -45,6 +45,7 @@ To install the *StateSpaceAnalysis.jl* package, follow these steps:
 3. **Add the package to your Julia environment:**
     ```julia
     Pkg.add(path=".")
+    using StateSpaceAnalysis
     ```
 
 This will install all the necessary dependencies and set up the StateSpaceAnalysis.jl package for use.
