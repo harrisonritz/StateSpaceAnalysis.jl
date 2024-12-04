@@ -5,20 +5,23 @@
 
 ## Overview
 
-StateSpaceAnalysis.jl is a Julia package designed for fitting linear-Gaussian state space models (SSMs) using Subspace System Identification (SSID) and Expectation Maximization (EM) algorithms. 
+*StateSpaceAnalysis.jl* is a Julia package designed for fitting linear-Gaussian state space models (SSMs) using Subspace System Identification (SSID) and Expectation Maximization (EM) algorithms. 
 
-This package provides tools for preprocessing data, fitting models, and evaluating model performance, with methods especially geared towards neuroimaging analysis:
+This package provides tools for preprocessing data, fitting models, and evaluating model performance, with methods especially tailored towards neuroimaging analysis:
 
-* event-related structure of Neuroimaging data. EEG/MEG often has batched sequences (e.g., states x timesteps x trials). We are custom-built for that case by (A) including spline bases for inputs and (B) re-using the filtered/smoothed covariance across batches to massive reduce compute time.
+**Event-related designs**: Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials). 
+*StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline bases for flexible input modeling over the epoch. 
 
-* high-dimensional systems. We are designed around scaling through efficient memory allocation, robust covariance handling (via PDMats.jl), and regularization. This has allowed this packaged to work well for high-dimensional state space models (e.g., factor dim > observation dim).
+**High-dimensional Systems**: Whole-brain modelling may require a large number of latent factors.  
+*StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via *PDMats.jl*), and regularization. 
 
-* data-driven initialization. Because using SSMs for task-based neuroimaging is relatively new, it is difficult to provide good initializations for state space models. My packages includes modified SSID functions from ControlSystemsAnalysis.jl (appropriately credited and consistent with their license -- incredibly grateful!). By use SSID, we get really good initializations, which are critical for high-dimensional SSMs.
+**Data-driven Initialization**: We need good initialization for systems where we don't have great domain knowledge (especially when there are many latent factors!).
+*StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from *ControlSystemsAnalysis.jl*.
 
 
 ## Installation
 
-To install the StateSpaceAnalysis.jl package, follow these steps:
+To install the *StateSpaceAnalysis.jl* package, follow these steps:
 
 1. **Clone the repository:**
     ```sh
@@ -39,78 +42,6 @@ To install the StateSpaceAnalysis.jl package, follow these steps:
     ```
 
 This will install all the necessary dependencies and set up the StateSpaceAnalysis.jl package for use.
-
-
-
-## Functions Overview
-
-### `setup/custom.jl`
-**This needs to be set by the user for the project-specific parameters**
-- `assign_arguments`: Assigns command-line arguments to the structure.
-- `select_trials`: Selects trials based on custom criteria.
-- `scale_input`: Scales the input data.
-- `create_input_basis`: Formats inputs with basis functions.
-- `transform_observations`: Transforms observations, typically using PCA.
-- `format_B_preSSID`: Formats the B matrix for SSID.
-- `format_B_postSSID`: Assigns the estimated B columns to the rest of the matrix.
-
-### `fit/launch.jl`
-- `preprocess_fit`: Preprocesses the data and sets up the fitting environment.
-- `launch_SSID`: Launches the SSID fitting process.
-- `launch_EM`: Launches the EM fitting process.
-- `load_SSID`: Loads a previously saved SSID model.
-- `save_SSID`: Saves the SSID model.
-- `save_results`: Saves the fitting results.
-
-### `fit/SSID.jl`
-**These function are modifed from the excellent ControlSystemsIdentification.jl package**
-- `fit_SSID`: Performs subspace identification for state space analysis.
-- `subspaceid_SSA`: modified ControlSystemsIdentification.jl for SSID
-
-### `fit/EM.jl`
-- `fit_EM`: Runs the EM algorithm for individual participants.
-- `ESTEP!`: Executes the E-step of the EM algorithm.
-- `MSTEP`: Executes the M-step of the EM algorithm.
-- `estimate_cov!`: Estimates the latent covariance.
-- `estimate_mean!`: Estimates the latent mean.
-- `estimate_moments!`: update the sufficient statistics.
-
-
-### `fit/posteriors.jl`
-- `posterior_all`: Generates all posterior estimates (mean and covariance).
-- `posterior_mean`: Generates only the posterior means.
-- `posterior_sse`: Computes the sum of squared errors for the posteriors.
-
-
-### `setup/setup.jl`
-- `read_args`: process command line arguements (for running on the cluster)
-- `setup_path`: Sets up the directory paths for saving results.
-- `load_data`: Loads the data from files.
-- `build_inputs`: Builds the input matrices for the model.
-- `whiten`: Whitens the observations (PCA).
-
-### `setup/structs.jl`
-- `param_struct`: Defines the parameters structure.
-- `data_struct`: Defines the data structure.
-- `results_struct`: Defines the results structure.
-- `estimates_struct`: Defines the estimates structure.
-- `model_struct`: Defines the model structure.
-- `core_struct`: Combines all the structures into a core structure.
-- `post_all`: Defines the structure for all posterior estimates.
-- `post_mean`: Defines the structure for posterior means.
-- `post_sse`: Defines the structure for posterior sum of squared errors.
-
-### `utils/utils.jl`
-- `tol_PD`: Ensures a matrix is positive definite with a tolerance.
-- `tol_PSD`: Ensures a matrix is positive semi-definite with a tolerance.
-- `demix`: Demixes the observations using the saved PCA transformation.
-- `remix`: Remixes the observations using the saved PCA transformation.
-
-
-
-
-
-
 
 
 ## Walkthrough of the `example/fit_example.jl` script
@@ -141,9 +72,7 @@ This structure is used throughout the script, which allows for effective memory 
 ```julia
 @reset S = StateSpaceAnalysis.preprocess_fit(S);
 ```
-
-within preprocess_fit(S):
-
+Preprocessing steps within `preprocess_fit(S)`:
 ```julia
 # read in arguements, helpful for running on a cluster
 S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
@@ -194,7 +123,7 @@ for em_iter = 1:S.prm.max_iter_em
         # ==== TOTAL LOGLIK ==========================================================
         StateSpaceAnalysis.total_loglik!(S) # compute the total likelihood
 
-        # quality checks & convergence checks
+        # [...] quality & convergence checks
 end
 ```
 
@@ -202,4 +131,72 @@ end
 ```julia
 StateSpaceAnalysis.save_results(S)
 ```
+
+
+
+
+## Functions Overview
+
+### `setup/custom.jl`
+**This needs to be set by the user for the project-specific parameters**
+- `assign_arguments`: Assigns command-line arguments to the structure.
+- `select_trials`: Selects trials based on custom criteria.
+- `scale_input`: Scales the input data.
+- `create_input_basis`: Formats inputs with basis functions.
+- `transform_observations`: Transforms observations, typically using PCA.
+- `format_B_preSSID`: Formats the B matrix for SSID.
+- `format_B_postSSID`: Assigns the estimated B columns to the rest of the matrix.
+
+### `fit/launch.jl`
+- `preprocess_fit`: Preprocesses the data and sets up the fitting environment.
+- `launch_SSID`: Launches the SSID fitting process.
+- `launch_EM`: Launches the EM fitting process.
+- `load_SSID`: Loads a previously saved SSID model.
+- `save_SSID`: Saves the SSID model.
+- `save_results`: Saves the fitting results.
+
+### `fit/SSID.jl`
+**These function are modifed from *ControlSystemsIdentification.jl***
+- `fit_SSID`: Performs subspace identification for state space analysis.
+- `subspaceid_SSA`: modified ControlSystemsIdentification.jl for SSID
+
+### `fit/EM.jl`
+- `fit_EM`: Runs the EM algorithm for individual participants.
+- `ESTEP!`: Executes the E-step of the EM algorithm.
+- `MSTEP`: Executes the M-step of the EM algorithm.
+- `estimate_cov!`: Estimates the latent covariance.
+- `estimate_mean!`: Estimates the latent mean.
+- `estimate_moments!`: update the sufficient statistics.
+
+
+### `fit/posteriors.jl`
+- `posterior_all`: Generates all posterior estimates (mean and covariance).
+- `posterior_mean`: Generates only the posterior means.
+- `posterior_sse`: Computes the sum of squared errors for the posteriors.
+
+
+### `setup/setup.jl`
+- `read_args`: process command line arguements (for running on the cluster)
+- `setup_path`: Sets up the directory paths for saving results.
+- `load_data`: Loads the data from files.
+- `build_inputs`: Builds the input matrices for the model.
+- `whiten`: Whitens the observations (PCA).
+
+### `setup/structs.jl`
+- `param_struct`: Defines the parameters structure.
+- `data_struct`: Defines the data structure.
+- `results_struct`: Defines the results structure.
+- `estimates_struct`: Defines the estimates structure.
+- `model_struct`: Defines the model structure.
+- `core_struct`: Combines all the structures into a core structure.
+- `post_all`: Defines the structure for all posterior estimates.
+- `post_mean`: Defines the structure for posterior means.
+- `post_sse`: Defines the structure for posterior sum of squared errors.
+
+### `utils/utils.jl`
+- `tol_PD`: Ensures a matrix is positive definite with a tolerance.
+- `tol_PSD`: Ensures a matrix is positive semi-definite with a tolerance.
+- `demix`: Demixes the observations using the saved PCA transformation.
+- `remix`: Remixes the observations using the saved PCA transformation.
+
 
