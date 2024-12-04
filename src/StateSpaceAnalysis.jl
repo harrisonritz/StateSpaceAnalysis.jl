@@ -63,7 +63,7 @@ export  core_struct, param_struct, data_struct, results_struct, estimates_struct
         set_model, transform_model
 
 include("setup/generate.jl")
-export gen_rand_params, generate_ssm_trials
+export generate_rand_params, generate_ssm_trials
 
 
 # utility functions

@@ -36,7 +36,7 @@ function preprocess_fit(S)
     @reset S.est = deepcopy(set_estimates(S));
 
     # init model
-    @reset S = deepcopy(gen_rand_params(S));
+    @reset S = deepcopy(generate_rand_params(S));
     #  =======================================================================
 
 
