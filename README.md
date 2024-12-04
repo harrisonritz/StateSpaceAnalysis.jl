@@ -1,6 +1,6 @@
 # StateSpaceAnalysis.jl
 
-[![Build Status](https://github.com/harrisonritz/StateSpaceAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/harrisonritz/StateSpaceAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Build Status](https://github.com/harrisonritz/StateSpaceAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/harrisonritz/StateSpaceAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 
 ## Overview
@@ -105,97 +105,87 @@ This will install all the necessary dependencies and set up the StateSpaceAnalys
 
 
 
-## Running the Example
-To run the example fitting script, follow these steps:
+## Walkthrough of the `example/fit_example.jl` script
 
-1. Set the paths in `example/fit_example.jl`:
-    ```julia
-    run_cluster = length(ARGS)!=0;
-    if run_cluster
-        src_path = "/home/hr0283/HallM_StateSpaceAnalysis/src"
-        save_path = "/scratch/gpfs/hr0283/HallM_StateSpaceAnalysis/src";
-    else 
-        src_path =  "/Users/hr0283/Projects/StateSpaceAnalysis.jl/src"
-        save_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example";
-    end
-    ```
-
-2. Load the necessary packages and configure the system:
-    ```julia
-    using StateSpaceAnalysis
-    using Accessors
-    using Random
-    using LinearAlgebra
-    using Dates
-    using Revise
-    ```
-
-3. Set the parameters and data structure:
-    ```julia
-    S = core_struct(
+### Set up `S`, the core structure which carries the parameters and data structure
+```julia
+S = core_struct(
         prm=param_struct(
-            seed = rand_seed,
-            model_name = "test",
-            changelog = "run test",
-            load_name = "HallMcMaster2019_ITI100-Cue200-ISI400-Trial200_srate@125_filt@0-30",
-            load_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example/example-data",
-            pt_list = 1:1,
-            max_iter_em = 500,
-            ssid_fit = "fit",
-            ssid_save = false,
-            ssid_type = :CVA,
-            ssid_lag = 24,
-        ),
+            ... # high-level parameters
+            ), 
         dat=data_struct(
-            sel_event = 2:4,
-            pt = 1,
-            x_dim = 24,
-            basis_name = "bspline",
-            spline_gap = 5,
+            ... # data and data description
+            ),
+        res=results_struct(
+            ... # fit metrics and model derivates
         ),
-        res=results_struct(),
-        est=estimates_struct(),
-        mdl=model_struct(),
-    );
-    ```
+        est=estimates_struct(
+            ... # scratch space
+        ),
+        mdl=model_struct(
+            ... # estimated model parameters
+        ),
+        );
+```
+This structure is used throughout the script, which allows for effective memory management (i.e., the complier can know the size of the data tensors).
 
-4. Run the fitting process:
-    ```julia
-    @reset S.res.startTime_all = Dates.format(now(), "mm/dd/yyyy HH:MM:SS");
-    println("Starting fit at $(S.res.startTime_all)")
+### Preprocess the data:
+```julia
+@reset S = StateSpaceAnalysis.preprocess_fit(S);
+```
 
-    @reset S = StateSpaceAnalysis.preprocess_fit(S);
+within preprocess_fit(S):
 
-    if S.prm.ssid_fit == "fit"
-        @reset S = StateSpaceAnalysis.launch_SSID(S);
-    elseif S.prm.ssid_fit == "load"
-        @reset S = StateSpaceAnalysis.load_SSID(S);
-    end
+```julia
+# read in arguements, helpful for running on a cluster
+S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
+# set up the paths
+StateSpaceAnalysis.setup_path(S)
+# load and format the data; split for cross-validation
+S = deepcopy(StateSpaceAnalysis.load_data(S));
+# build the input matrices
+S = deepcopy(StateSpaceAnalysis.build_inputs(S));
+# transform the observed data
+S = deepcopy(StateSpaceAnalysis.whiten(S));
+# fit baseline models to the data
+StateSpaceAnalysis.null_loglik!(S);
+# initialize the expectations and parameters
+@reset S.est = deepcopy(set_estimates(S));
+@reset S = deepcopy(gen_rand_params(S));
+```
 
-    @reset S = StateSpaceAnalysis.launch_EM(S);
+### get the initial conditions with Subspace Identification (SSID):
+```julia
+if S.prm.ssid_fit == "fit" # if fitting the SSID
+    @reset S = StateSpaceAnalysis.launch_SSID(S);
+elseif S.prm.ssid_fit == "load" # if loading a previously-fit SSID
+    @reset S = StateSpaceAnalysis.load_SSID(S);
+end
+```
 
-    @reset S.res.endTime_all = Dates.format(now(), "mm/dd/yyyy HH:MM:SS");
-    println("Finished fit at $(Dates.format(now(), "mm/dd/yyyy HH:MM:SS"))")
-    ```
+### get the initial conditions with Subspace Identification (SSID):
+```julia
+@reset S = StateSpaceAnalysis.launch_EM(S);
+```
+The basic structure of the EM script:
+```julia
+for em_iter = 1:S.prm.max_iter_em
 
-5. Optionally, plot diagnostics and save the fit:
-    ```julia
-    do_plots = false
-    if do_plots
-        try
-            StateSpaceAnalysis.plot_loglik_traces(S)
-            StateSpaceAnalysis.plot_avg_pred(S)
-            StateSpaceAnalysis.plot_params(S)
-        catch
-        end
-    end
+        # ==== E-STEP ================================================================
+        @inline StateSpaceAnalysis.ESTEP!(S); # estimate the sufficient statistics
 
-    if S.prm.do_save
-        println("\n========== SAVING FIT ==========")
-        StateSpaceAnalysis.save_results(S)
-    end
-    ```
+        # ==== M-STEP ================================================================
+        @reset S.mdl = deepcopy(StateSpaceAnalysis.MSTEP(S)); # use the sufficient statistics to update the parameters
 
-This will run the example fitting script, performing SSID and EM fitting on the provided data.
+        # ==== TOTAL LOGLIK ==========================================================
+        StateSpaceAnalysis.total_loglik!(S) # compute the total likelihood
 
+        # quality checks & convergence checks
+end
+```
+
+### Save the fit:
+```julia
+StateSpaceAnalysis.save_results(S)
+```
 
