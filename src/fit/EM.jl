@@ -7,6 +7,7 @@ function fit_EM(S);
     run EM for individual participants
     """
 
+    @assert ~all(S.est.xx_init .== 0) && ~all(S.est.yy_obs .== 0);
     @reset S.res.startTime_em = Dates.format(now(), "mm/dd/yyyy HH:MM:SS");
 
     # run tests
@@ -108,23 +109,6 @@ function fit_EM(S);
     return S
 
 end
-
-
-# TODO: build out unit tests
-function run_tests(S)
-
-    # check for initialized moments
-    @assert ~all(S.est.xx_init .== 0) && ~all(S.est.yy_obs .== 0);
-
-    # check that E-steps don't carry over
-    @assert norm(test_rep_ESTEP(S)) ≈ 0.0;
-
-
-    println("[passed all tests]\n")
-
-end
-
-
 
 
 

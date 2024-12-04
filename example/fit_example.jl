@@ -1,26 +1,4 @@
 
-# SET PATHS =============================================================
-# EDIT THIS!
-run_cluster = length(ARGS)!=0;
-if run_cluster
-    root_path = "/home/hr0283/HallM_StateSpaceAnalysis/src"
-    save_path = "/scratch/gpfs/hr0283/HallM_StateSpaceAnalysis/src";
-else 
-    root_path =  "/Users/hr0283/Projects/StateSpaceAnalysis.jl/src"
-    save_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example";
-end
-
-push!(LOAD_PATH, pwd());
-push!(LOAD_PATH, "$(pwd())/../");
-push!(LOAD_PATH, root_path);
-if run_cluster
-    println(LOAD_PATH)
-end
-# =============================================================
-
-
-
-
 # LOAD PACKAGES =============================================================
 using StateSpaceAnalysis
 using Accessors
@@ -30,6 +8,23 @@ using Dates
 using Revise # this is for development
 # =============================================================
 
+
+
+
+# SET PATHS =============================================================
+# EDIT THIS!
+run_cluster = length(ARGS)!=0;
+if run_cluster
+    root_path = "YOUR_CLUSTER_ROOT_PATH"
+    save_path = "YOUR_CLUSTER_SAVE_PATH";
+    load_path = "YOUR_CLUSTER_LOAD_PATH"
+else
+    root_path =  pkgdir(StateSpaceAnalysis, "src")
+    save_path =  pkgdir(StateSpaceAnalysis, "example")
+    load_path =  pkgdir(StateSpaceAnalysis, "example", "example-data")
+end
+
+# =============================================================
 
 
 
@@ -62,12 +57,15 @@ println("========================================\n")
 # SET PARAMETERS ==============================================================
 S = core_struct(
     prm=param_struct(
-        
+
+        root_path = root_path,
+        save_path = save_path,
+        load_path = load_path,
+
         seed = rand_seed,
         model_name = "test",
         changelog = "run test",
         load_name = "example",
-        load_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example/example-data",
         pt_list = 1:1, # always has to be range
 
         max_iter_em = run_cluster ? 2e4 : 500,
@@ -76,8 +74,7 @@ S = core_struct(
 
         x_dim_fast = round.(Int64, 16:16:128),
         
-        root_path = root_path,
-        save_path = save_path,
+        
         do_save = run_cluster ? true : false, 
 
         y_transform = "PCA",
