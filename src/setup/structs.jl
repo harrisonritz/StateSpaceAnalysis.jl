@@ -16,11 +16,14 @@
 
     seed::Int64 = 99
 
-    max_iter_em::Int64 = 2e4
-    test_iter::Int64 = 100
-    early_stop::Bool = true
+    max_iter_em::Int64 = 2e4        # max iterations for EM
+    test_iter::Int64 = 100          # compute test loglik every n iterations
+    check_train_iter::Int64 = 100   # check total loglik after n iterations
+    train_threshold::Float64 = 1    # total loglik stopping criterion
+    early_stop::Bool = true         # stop early if test loglik doesn't improve
+    test_threshold::Float64 = 1e-3  # test loglik stopping criterion
 
-    pt_list::UnitRange{Int64} = 1:1
+    pt_list::Union{UnitRange{Int64}, Vector{Int64}, Int64} = 1:1
 
     x_dim_fast::Array{Int64,1} = round.(Int64, 16:16:128)
     x_dim_slow::Array{Int64,1} = round.(Int64, 144:16:256)
@@ -60,9 +63,9 @@
     R_type::String = "full"
     P0_type::String = "full"
 
-    root_path::String = pwd()
-    save_path::String = pwd()
+    save_path::String = pkgdir(StateSpaceAnalysis)
     do_save::Bool = false
+    write_mat::Bool = true
 
 end
 
@@ -81,31 +84,31 @@ end
     events::Vector{Float64} = zeros(0);
 
     n_chans::Int64 = 0;
-    n_times::Int64 = 0;
+    n_steps::Int64 = 0;
     n_trials::Int64 = 0;
     chanLocs::Dict = Dict();
 
     trial::Dict = Dict();
 
     n_train::Int64 = 0;
-    y_train_orig::Array{Float64,3} = zeros(n_chans, n_times, n_train);
-    y_train::Array{Float64,3} = zeros(y_dim, n_times, n_train);
-    u_train::Array{Float64,3} = zeros(u_dim, n_times, n_train);
+    y_train_orig::Array{Float64,3} = zeros(n_chans, n_steps, n_train);
+    y_train::Array{Float64,3} = zeros(y_dim, n_steps, n_train);
+    u_train::Array{Float64,3} = zeros(u_dim, n_steps, n_train);
     u0_train::Matrix{Float64} = zeros(u0_dim, n_train);
     u_train_cor::Matrix{Float64} = zeros(0, 0);
-    u_ssid::Array{Float64,3} = zeros(u_dim, n_times, n_train);
+    u_ssid::Array{Float64,3} = zeros(u_dim, n_steps, n_train);
 
     n_test::Int64 = 0;
-    y_test_orig::Array{Float64,3} = zeros(n_chans, n_times, n_test);
-    y_test::Array{Float64,3} = zeros(y_dim, n_times, n_test);
-    u_test::Array{Float64,3} = zeros(u_dim, n_times, n_test);
+    y_test_orig::Array{Float64,3} = zeros(n_chans, n_steps, n_test);
+    y_test::Array{Float64,3} = zeros(y_dim, n_steps, n_test);
+    u_test::Array{Float64,3} = zeros(u_dim, n_steps, n_test);
     u0_test::Matrix{Float64} = zeros(u0_dim, n_test);
 
     # select data
     sel_trial::BitArray{1} = falses(0);
     sel_train::BitArray{1} = falses(0);
     sel_test::BitArray{1} = falses(0);
-    sel_times::BitArray{1} = falses(0);
+    sel_steps::BitArray{1} = falses(0);
     sel_event::Vector{Int64} = zeros(0);
 
 
@@ -301,8 +304,8 @@ end
 
     # temp
     xdim_temp::Vector{Float64} = zeros(0)
-    xdim2_temp::Matrix{Float64} = zeros(0,0)
     ydim_temp::Vector{Float64} = zeros(0)
+    xdim2_temp::Matrix{Float64} = zeros(0,0)
     x_cur::Matrix{Float64} = zeros(0,0)
     x_next::Matrix{Float64} = zeros(0,0)
     u_cur::Matrix{Float64} = zeros(0,0)
@@ -343,37 +346,37 @@ function set_estimates(S)
 
 
     # initialize the moments structure with the obervables
-    ywl = reshape(permutedims(S.dat.y_train, (2,3,1)), S.dat.n_times*S.dat.n_train, S.dat.y_dim);
-    uwl = reshape(permutedims(S.dat.u_train[:,1:end-1,:], (2,3,1)), (S.dat.n_times-1)*S.dat.n_train, S.dat.u_dim);
+    ywl = reshape(permutedims(S.dat.y_train, (2,3,1)), S.dat.n_steps*S.dat.n_train, S.dat.y_dim);
+    uwl = reshape(permutedims(S.dat.u_train[:,1:end-1,:], (2,3,1)), (S.dat.n_steps-1)*S.dat.n_train, S.dat.u_dim);
     u0wl = reshape(permutedims(S.dat.u0_train, (2,1)), S.dat.n_train, S.dat.u0_dim);
 
     est = estimates_struct(
         
-        pred_mean = zeros(S.dat.x_dim, S.dat.n_times),
-        filt_mean = zeros(S.dat.x_dim, S.dat.n_times),
-        smooth_mean = zeros(S.dat.x_dim, S.dat.n_times),
+        pred_mean = zeros(S.dat.x_dim, S.dat.n_steps),
+        filt_mean = zeros(S.dat.x_dim, S.dat.n_steps),
+        smooth_mean = zeros(S.dat.x_dim, S.dat.n_steps),
 
-        pred_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times],
-        pred_icov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times],
-        filt_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times],
-        smooth_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_times],
+        pred_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps],
+        pred_icov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps],
+        filt_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps],
+        smooth_cov = [init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps],
         smooth_xcov = zeros(S.dat.x_dim, S.dat.x_dim),
 
-        K = zeros(S.dat.x_dim, S.dat.y_dim, S.dat.n_times),
-        G = zeros(S.dat.x_dim, S.dat.x_dim, S.dat.n_times),
+        K = zeros(S.dat.x_dim, S.dat.y_dim, S.dat.n_steps),
+        G = zeros(S.dat.x_dim, S.dat.x_dim, S.dat.n_steps),
 
-        Bu = zeros(S.dat.x_dim, S.dat.n_times),
-        CiRY = zeros(S.dat.x_dim, S.dat.n_times),
+        Bu = zeros(S.dat.x_dim, S.dat.n_steps),
+        CiRY = zeros(S.dat.x_dim, S.dat.n_steps),
 
         xdim_temp = zeros(S.dat.x_dim),
         xdim2_temp = zeros(S.dat.x_dim, S.dat.x_dim),
         ydim_temp = zeros(S.dat.y_dim),
 
-        x_cur = zeros(S.dat.x_dim, S.dat.n_times-1),
-        x_next  = zeros(S.dat.x_dim, S.dat.n_times-1),
-        u_cur  = zeros(S.dat.u_dim, S.dat.n_times-1),
+        x_cur = zeros(S.dat.x_dim, S.dat.n_steps-1),
+        x_next  = zeros(S.dat.x_dim, S.dat.n_steps-1),
+        u_cur  = zeros(S.dat.u_dim, S.dat.n_steps-1),
         u0_cur  = zeros(S.dat.u0_dim),
-        y_cur = zeros(S.dat.y_dim, S.dat.n_times),
+        y_cur = zeros(S.dat.y_dim, S.dat.n_steps),
         
         xx_init = tol_PD(u0wl' * u0wl),
         xy_init = zeros(S.dat.u0_dim, S.dat.x_dim),
@@ -393,7 +396,7 @@ function set_estimates(S)
         yy_obs = tol_PD(ywl' * ywl),
         n_obs = zeros(1),
 
-        test_mu = zeros(S.dat.y_dim, S.dat.n_times),
+        test_mu = zeros(S.dat.y_dim, S.dat.n_steps),
         test_sigma = [init_PD(S.dat.y_dim)],
 
     )

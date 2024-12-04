@@ -81,28 +81,58 @@ end
 
 
 
-# random parameters
 
-function init_param_rand(S)
+# report parameters and fit
 
+function report_R2(S)
 
+    test_white_loglik = StateSpaceAnalysis.test_loglik(S);
+    P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
 
+    loglik_R2 = zeros(Float64, length(S.res.null_loglik));
+    sse_R2_white = zeros(Float64, length(S.res.null_loglik));
+    sse_R2_orig = zeros(Float64, length(S.res.null_loglik));
 
-    A = Matrix(Diagonal(rand(S.dat.x_dim)));
-    B = randn(S.dat.x_dim, S.dat.u_dim);
-    Q = tol_PD(randn(S.dat.x_dim, S.dat.x_dim));
+    println("Next-Step R-Squared ----------")
+    for ii in eachindex(S.res.null_loglik)
 
-    C = randn(S.dat.y_dim, S.dat.x_dim);
-    R = tol_PD(randn(S.dat.y_dim, S.dat.y_dim));
+        loglik_R2[ii] = ll_R2(S, test_white_loglik[end], S.res.null_loglik[ii])
+        sse_R2_white[ii] = 1.0 - (P.sse_white[1] / S.res.null_sse_white[ii]);
+        sse_R2_orig[ii] = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[ii]);
 
-    B0 = randn(S.dat.x_dim, S.dat.u0_dim);
-    P0 = tol_PD(randn(S.dat.x_dim, S.dat.x_dim));
-
-    @reset S.mdl = set_model(;A=A, B=B, Q=Q, C=C, R=R, B0=B0, P0=P0);
-
-    return S
+        println("$(S.res.null_names[ii]): loglik R2 = $(round(loglik_R2[ii], sigdigits=4)) (white) // SSE R2 = $(round(sse_R2_white[ii], digits=2)) (white), $(round(sse_R2_orig[ii], sigdigits=4)) (orig)")
+    end
+    println("------------------------------")
+    println("Lookahead R-Squared ----------")
+    println("$(round.(1.0 .- (P.sse_fwd_white / S.res.null_sse_white[1]), digits=2)) (white)\n$(round.(1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]), digits=2)) (orig)")
+    println("------------------------------\n")
 
 end
+
+
+function report_params(S)
+
+
+    println("\n========== A ========== ")
+    display(S.mdl.A)
+    println("\n========== B ========== ")
+    display(S.mdl.B)
+    println("\n========== Q ========== ")
+    display(S.mdl.Q)
+
+    println("\n========== C ========== ")
+    display(S.mdl.C)
+    println("\n========== R ========== ")
+    display(S.mdl.R)
+
+    println("\n========== B0 ========== ")
+    display(S.mdl.B0)
+    println("\n========== P0 ========== ")
+    display(S.mdl.P0)
+
+end
+
+
 
 
 

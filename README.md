@@ -94,17 +94,8 @@ This will install all the necessary dependencies and set up the StateSpaceAnalys
 - `post_sse`: Defines the structure for posterior sum of squared errors.
 
 ### `utils/utils.jl`
-- `zsel`: Standardizes the selected elements of a vector.
-- `zsel_tall`: Standardizes the selected elements of a tall vector.
-- `zdim`: Standardizes the elements of an array along specified dimensions.
-- `init_PD`: Initializes a positive definite matrix.
 - `tol_PD`: Ensures a matrix is positive definite with a tolerance.
-- `init_PSD`: Initializes a positive semi-definite matrix.
 - `tol_PSD`: Ensures a matrix is positive semi-definite with a tolerance.
-- `diag_PD`: Creates a diagonal positive definite matrix.
-- `format_noise`: Formats noise matrices based on the specified type.
-- `sumsqr`: Computes the sum of squares of a vector.
-- `split_list`: Splits a string by a delimiter.
 - `demix`: Demixes the observations using the saved PCA transformation.
 - `remix`: Remixes the observations using the saved PCA transformation.
 

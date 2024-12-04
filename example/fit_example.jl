@@ -1,26 +1,4 @@
 
-# SET PATHS =============================================================
-# EDIT THIS!
-run_cluster = length(ARGS)!=0;
-if run_cluster
-    root_path = "/home/hr0283/HallM_StateSpaceAnalysis/src"
-    save_path = "/scratch/gpfs/hr0283/HallM_StateSpaceAnalysis/src";
-else 
-    root_path =  "/Users/hr0283/Projects/StateSpaceAnalysis.jl/src"
-    save_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example";
-end
-
-push!(LOAD_PATH, pwd());
-push!(LOAD_PATH, "$(pwd())/../");
-push!(LOAD_PATH, root_path);
-if run_cluster
-    println(LOAD_PATH)
-end
-# =============================================================
-
-
-
-
 # LOAD PACKAGES =============================================================
 using StateSpaceAnalysis
 using Accessors
@@ -30,6 +8,19 @@ using Dates
 using Revise # this is for development
 # =============================================================
 
+
+
+# SET PATHS =============================================================
+run_cluster = false; # set cluster conditional here
+if run_cluster # set cluster paths here
+    save_path = "YOUR_CLUSTER_SAVE_PATH"; 
+    load_path = "YOUR_CLUSTER_LOAD_PATH";
+else
+    save_path =  pkgdir(StateSpaceAnalysis, "example")
+    load_path =  pkgdir(StateSpaceAnalysis, "example", "example-data")
+end
+
+# =============================================================
 
 
 
@@ -62,12 +53,14 @@ println("========================================\n")
 # SET PARAMETERS ==============================================================
 S = core_struct(
     prm=param_struct(
-        
+
+        save_path = save_path,
+        load_path = load_path,
+
         seed = rand_seed,
         model_name = "test",
         changelog = "run test",
         load_name = "example",
-        load_path = "/Users/hr0283/Projects/StateSpaceAnalysis.jl/example/example-data",
         pt_list = 1:1, # always has to be range
 
         max_iter_em = run_cluster ? 2e4 : 500,
@@ -76,20 +69,18 @@ S = core_struct(
 
         x_dim_fast = round.(Int64, 16:16:128),
         
-        root_path = root_path,
-        save_path = save_path,
-        do_save = run_cluster ? true : false, 
+        do_save = run_cluster ? true : true, 
 
         y_transform = "PCA",
         PCA_ratio = .99,
 
         do_trial_sel = true, # only epochs with current & previous accurate
 
-        ssid_fit = length(ARGS) > 2 ? ARGS[3] : "fit", # fit, load
+        ssid_fit = length(ARGS) > 2 ? ARGS[3] : "fit", # "fit"/"load"; "fit" new SSID, or "load" existing SSID
         ssid_save =  length(ARGS) > 3 ? parse(Bool, ARGS[4]) : false, # SAVE SSID AND THEN EXIT
 
         ssid_type = :CVA,
-        ssid_lag = run_cluster ? 128 : 24,
+        ssid_lag = run_cluster ? 128 : 16,
         ), 
 
     dat=data_struct(
@@ -97,21 +88,17 @@ S = core_struct(
         sel_event = 2:4,
 
         pt = 1, # pt default
-        x_dim = 24 , # x_dim default
+        x_dim = 16 , # x_dim default
 
         basis_name = "bspline",
-        spline_gap = 5, # number of samples between spline knots
-        norm_basis = false, # normalize every timepoint in basis with 2-norm
+        spline_gap = 5, # spline knots optimized for every n timesteps
 
         pred_list = [
-            "taskRepeat", "taskSwitch", 
-            "switch",
-            "RT", "prevRT", 
-            "cueColor", "cueShape", "cueRepeat",
+            "task",
             ],
 
         pred0_list = [
-            "prevTask", "RT", "prevRT", 
+            "prevTask",
             ],
 
 
@@ -137,9 +124,6 @@ println("Starting fit at $(S.res.startTime_all)")
 
 # PREPROCESS ======================================
 @reset S = StateSpaceAnalysis.preprocess_fit(S);
-
-# @reset S = StateSpaceAnalysis.init_param_rand(S); # helfpul for debugging
-
 # =================================================
 
 
@@ -178,25 +162,27 @@ println("Finished fit at $(Dates.format(now(), "mm/dd/yyyy HH:MM:SS"))")
 
 # PLOT DIAGNOSTICS =======================================================================
 
-do_plots = false
-if do_plots
-    try
+# TODO: implement plotting functions
+# do_plots = false
+# if do_plots
+#     try
 
-        # plot loglik traces
-        StateSpaceAnalysis.plot_loglik_traces(S)
+#         # plot loglik traces
+#         StateSpaceAnalysis.plot_loglik_traces(S)
 
         
-        # plot posterior predictive checks        
-        StateSpaceAnalysis.plot_avg_pred(S)
+#         # plot posterior predictive checks        
+#         StateSpaceAnalysis.plot_avg_pred(S)
 
 
-        # plot model
-        StateSpaceAnalysis.plot_params(S)
+#         # plot model
+#         StateSpaceAnalysis.plot_params(S)
 
 
-    catch
-    end
-end
+#     catch
+#     end
+# end
+
 #  =======================================================================
 
 
@@ -207,7 +193,7 @@ if S.prm.do_save
 
     println("\n========== SAVING FIT ==========")
 
-    save_results(S);
+    StateSpaceAnalysis.save_results(S);
 
 else
     println("\n========== *NOT* SAVING FIT ==========")

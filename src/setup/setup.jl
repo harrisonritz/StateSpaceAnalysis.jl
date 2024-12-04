@@ -5,7 +5,7 @@
 # read in arguements from command line
 function read_args(S, arg_in)
     """
-    read_args()
+        read_args(S::core_struct, arg_in::Array{String})
 
     Reads and processes the command-line arguments provided to the program.
     """
@@ -76,7 +76,7 @@ end
 # setup the directories for saving the results
 function setup_path(S)
     """
-    setup_path(S::Structure)
+        setup_path(S::core_struct)
 
     Sets up the directories for saving the results.
     """
@@ -128,26 +128,26 @@ function load_data(S)
     # select time points
     if !isempty(S.dat.events)
         if !isempty(S.dat.sel_event)
-            @reset S.dat.sel_times = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
+            @reset S.dat.sel_steps = vec(any(in.(S.dat.events', S.dat.sel_event),dims=1));
         else
-            @reset S.dat.sel_times = trues(size(raw_data["y"],2));
+            @reset S.dat.sel_steps = trues(size(raw_data["y"],2));
         end
-        @reset S.dat.n_times = sum(S.dat.sel_times);
-        @reset S.dat.events = S.dat.events[S.dat.sel_times];
+        @reset S.dat.n_steps = sum(S.dat.sel_steps);
+        @reset S.dat.events = S.dat.events[S.dat.sel_steps];
     else
-        @reset S.dat.sel_times = trues(size(raw_data["y"],2));
-        @reset S.dat.n_times = sum(S.dat.sel_times);
+        @reset S.dat.sel_steps = trues(size(raw_data["y"],2));
+        @reset S.dat.n_steps = sum(S.dat.sel_steps);
         @reset S.dat.events = ones(size(raw_data["y"],2));
     end
 
 
     # setup EEG data
     # train
-    @reset S.dat.y_train_orig = raw_data["y"][:,S.dat.sel_times,S.dat.sel_train];
+    @reset S.dat.y_train_orig = raw_data["y"][:,S.dat.sel_steps,S.dat.sel_train];
     @reset S.dat.n_train = size(S.dat.y_train_orig,3);
 
     # test
-    @reset S.dat.y_test_orig =raw_data["y"][:,S.dat.sel_times,S.dat.sel_test];
+    @reset S.dat.y_test_orig =raw_data["y"][:,S.dat.sel_steps,S.dat.sel_test];
     @reset S.dat.n_test = size(S.dat.y_test_orig,3);
 
     # setup predictors
@@ -167,6 +167,12 @@ end
 
 
 function build_inputs(S)
+    
+    """
+        build_inputs(S::core_struct)
+
+    Build system inputs.
+    """
 
     println("")
 
@@ -224,7 +230,7 @@ function build_inputs(S)
 
         
         # check collinearity
-        ul = deepcopy(reshape(u, S.dat.u_dim, S.dat.n_times*n_trials)');
+        ul = deepcopy(reshape(u, S.dat.u_dim, S.dat.n_steps*n_trials)');
         f=svd(ul);
 
         # build initial state list
@@ -297,14 +303,20 @@ end
 
 
 function whiten(S)
-# orthogonalize data
+    """
+        whiten(S::core_struct)
 
-    y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_times*S.dat.n_train);
+    transform the observations using PCA.
+    """
+
+    # orthogonalize data
+
+    y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_steps*S.dat.n_train);
     @reset S = deepcopy(transform_observations(S, y_long));
 
 
     # transform train ==================================
-    y_train = zeros(S.dat.y_dim, S.dat.n_times, S.dat.n_train);
+    y_train = zeros(S.dat.y_dim, S.dat.n_steps, S.dat.n_train);
     for tt in axes(y_train,3)
         y_train[:,:,tt] = StateSpaceAnalysis.demix(S, S.dat.y_train_orig[:,:,tt]);
     end
@@ -312,7 +324,7 @@ function whiten(S)
 
 
     # transform test ==================================
-    y_test = zeros(S.dat.y_dim, S.dat.n_times, S.dat.n_test);
+    y_test = zeros(S.dat.y_dim, S.dat.n_steps, S.dat.n_test);
     for tt in axes(y_test,3)
         y_test[:,:,tt] = StateSpaceAnalysis.demix(S, S.dat.y_test_orig[:,:,tt]);
     end
@@ -326,41 +338,12 @@ end
 
 
 
-
-
-function test_rep_ESTEP(S)
-#  run ESTEP twice and compare results (should be zero)
-   
-
-    StateSpaceAnalysis.ESTEP!(S);
-    M1 = deepcopy(S.est);
-
-    StateSpaceAnalysis.ESTEP!(S);
-    M2 = deepcopy(S.est);
-
-
-    rep_norm = zeros(0);
-
-    push!(rep_norm, norm(M1.xx_init .- M2.xx_init))
-    push!(rep_norm, norm(M1.xy_init .- M2.xy_init))
-    push!(rep_norm, norm(M1.yy_init .- M2.yy_init));
-
-    push!(rep_norm, norm(M1.xx_dyn .- M2.xx_dyn));
-    push!(rep_norm, norm(M1.xy_dyn .- M2.xy_dyn));
-    push!(rep_norm, norm(M1.yy_dyn .- M2.yy_dyn));
-
-    push!(rep_norm, norm(M1.xx_obs .- M2.xx_obs))
-    push!(rep_norm, norm(M1.xy_obs .- M2.xy_obs))
-    push!(rep_norm, norm(M1.yy_obs .- M2.yy_obs));
-
-
-    return rep_norm
-
-end
-
-
-
 function generate_lds_parameters(S, Q_noise, R_noise, P0_noise)::NamedTuple
+    """
+        generate_lds_parameters(S::core_struct, Q_noise::Float64, R_noise::Float64, P0_noise::Float64)::NamedTuple
+
+    Generate the parameters for the LDS model.
+    """
 
     A = randn(S.dat.x_dim, S.dat.x_dim) + 5I;
     s,u = eigen(A); # get eigenvectors and eigenvals
@@ -389,8 +372,4 @@ function generate_lds_parameters(S, Q_noise, R_noise, P0_noise)::NamedTuple
     return sim
 
 end
-
-
-
-
 

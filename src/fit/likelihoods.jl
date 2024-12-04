@@ -1,6 +1,10 @@
 
 # ===== LOGLIK =================================================================
 
+ll_R2(S, test_loglik, null_loglik) = 1.0 - exp((2.0 /(S.dat.n_test*S.dat.n_steps*S.dat.y_dim)) * (null_loglik - test_loglik));
+
+
+
 log_post_v0(n,v,v0,vN,lam0,lamN,Sig0,SigN) =    -0.5*n*v*log(2pi) .+
                                                 0.5*v*logdet(lam0) .+ 
                                                 -0.5*v*logdet(lamN) .+
@@ -277,8 +281,8 @@ function null_loglik!(S)
     """
 
     # long format y
-    yl_train = reshape(permutedims(S.dat.y_train, (2,3,1)), S.dat.n_times*S.dat.n_train, S.dat.y_dim); # convert to long format (times x trials, channels)
-    yl_test = reshape(permutedims(S.dat.y_test, (2,3,1)), S.dat.n_times*S.dat.n_test, S.dat.y_dim); # convert to long format (times x trials, channels)
+    yl_train = reshape(permutedims(S.dat.y_train, (2,3,1)), S.dat.n_steps*S.dat.n_train, S.dat.y_dim); # convert to long format (steps x trials, channels)
+    yl_test = reshape(permutedims(S.dat.y_test, (2,3,1)), S.dat.n_steps*S.dat.n_test, S.dat.y_dim); # convert to long format (steps x trials, channels)
 
     # average first timepoint
     yl1_train = mean(S.dat.y_train[:,1,:], dims=2)';
@@ -288,23 +292,23 @@ function null_loglik!(S)
     ylp_train = deepcopy(S.dat.y_train);
     ylp_train[:,2:end,:] .= ylp_train[:,1:end-1,:];
     ylp_train[:,1,:] .= yl1_train';
-    ylp_train = reshape(permutedims(ylp_train, (2,3,1)), S.dat.n_times*S.dat.n_train, S.dat.y_dim);
+    ylp_train = reshape(permutedims(ylp_train, (2,3,1)), S.dat.n_steps*S.dat.n_train, S.dat.y_dim);
 
     ylp_test = deepcopy(S.dat.y_test);
     ylp_test[:,2:end,:] .= ylp_test[:,1:end-1,:];
     ylp_test[:,1,:] .= yl1_test';
-    ylp_test = reshape(permutedims(ylp_test, (2,3,1)), S.dat.n_times*S.dat.n_test, S.dat.y_dim);
+    ylp_test = reshape(permutedims(ylp_test, (2,3,1)), S.dat.n_steps*S.dat.n_test, S.dat.y_dim);
 
     # previous inputs
     up_train = deepcopy(S.dat.u_train);
     up_train[:,2:end,:] .= up_train[:,1:end-1,:];
     up_train[:,1,:] .= 0.0;
-    up_train = reshape(permutedims(up_train, (2,3,1)), S.dat.n_times*S.dat.n_train, S.dat.u_dim);
+    up_train = reshape(permutedims(up_train, (2,3,1)), S.dat.n_steps*S.dat.n_train, S.dat.u_dim);
 
     up_test = deepcopy(S.dat.u_test);
     up_test[:,2:end,:] .= up_test[:,1:end-1,:];
     up_test[:,1,:] .= 0.0;
-    up_test = reshape(permutedims(up_test, (2,3,1)), S.dat.n_times*S.dat.n_test, S.dat.u_dim);
+    up_test = reshape(permutedims(up_test, (2,3,1)), S.dat.n_steps*S.dat.n_test, S.dat.u_dim);
 
     calc_b(x,y) = [x; 1e-3I(size(x,2))] \ [y; zeros(size(x,2), size(y,2))];
     calc_res(x,y,b) = y .- x*b;

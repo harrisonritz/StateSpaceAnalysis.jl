@@ -1,6 +1,7 @@
 
 function preprocess_fit(S)
 
+    
     # READ ARGS ==============================================
     S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
     # =============================================================
@@ -29,22 +30,22 @@ function preprocess_fit(S)
     StateSpaceAnalysis.null_loglik!(S);
     #  =======================================================================
 
-    # INIT ESTIMATES ====================================
+
+    # INITIALIZE ESTIMATES ====================================
+    # init estimates
     @reset S.est = deepcopy(set_estimates(S));
-    #  =======================================================================
 
-
-    # INIT RANDOM MODEL ====================================
-    @reset S = deepcopy(init_param_rand(S));
+    # init model
+    @reset S = deepcopy(gen_rand_params(S));
     #  =======================================================================
 
 
 
     # REPORT DATA ==============================================
     println("\n========== FIT INFO ==========")
-    println("root path: $(S.prm.root_path)")
-    println("load name: $(S.prm.load_name)")
     println("load path: $(S.prm.load_path)")
+    println("load name: $(S.prm.load_name)")
+    println("save path: $(S.prm.save_path)")
     println("save name: $(S.prm.save_name)")
 
     println("participant: $(S.dat.pt)")
@@ -63,7 +64,7 @@ function preprocess_fit(S)
     println("training trials: $(S.dat.n_train)");
     println("testing trials: $(S.dat.n_test)");
     println("number of channels: $(S.dat.n_chans)")
-    println("time inverval: $(minimum(S.dat.ts[S.dat.sel_times]))s to $(maximum(S.dat.ts[S.dat.sel_times]))s; timepoints: $(length(S.dat.ts[S.dat.sel_times]))")
+    println("time inverval: $(minimum(S.dat.ts[S.dat.sel_steps]))s to $(maximum(S.dat.ts[S.dat.sel_steps]))s; timepoints: $(length(S.dat.ts[S.dat.sel_steps]))")
     println("Q type: $(S.prm.Q_type) / R type: $(S.prm.R_type) / P0 type: $(S.prm.P0_type)")
     println("========================================\n")
     #  =======================================================================
@@ -238,68 +239,66 @@ end
 function save_results(S)
 
 
-        # run GC
-        GC.gc(true);
-    
+    # CORE STRUCT (JLS) ========================================
+    try
+        serialize("$(S.prm.save_path)/fit-results/EM-jls/$(S.prm.model_name)/$(S.prm.save_name).jls", S)
+    catch err
+        println(err)
+        println("COULD NOT SAVE JLS")
+    end
 
-        # CORE STRUCT (JLS) ========================================
+
+    if S.prm.write_mat
+        
         try
-            serialize("$(S.prm.save_path)/fit-results/EM-jls/$(S.prm.model_name)/$(S.prm.save_name).jls", S)
-        catch err
-            println(err)
-            println("COULD NOT SAVE JLS")
-        end
+
+            # CORE STRUCT (MAT) ========================================
+                write_matfile(  "$(S.prm.save_path)/fit-results/EM-mat/$(S.prm.model_name)/$(S.prm.save_name).mat", 
+                                prm = S.prm, dat = S.dat, res = S.res, est = S.est, mdl = S.mdl);
+
+            
+            ## POSTERIOR MEAN (TRAIN) ========================================
+            P_train = StateSpaceAnalysis.posterior_mean( 
+                S, 
+                S.dat.y_train,
+                S.dat.y_train_orig,  
+                S.dat.u_train, 
+                S.dat.u0_train,
+            );
+
+            write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_trainPPC.mat", 
+                smooth_mean = P_train.smooth_mean,
+                filt_mean = P_train.filt_mean,
+                pred_mean = P_train.pred_mean,
+            );
+            P_train = nothing;
 
 
 
-        # CORE STRUCT (MAT) ========================================
-        try
-            write_matfile(  "$(S.prm.save_path)/fit-results/EM-mat/$(S.prm.model_name)/$(S.prm.save_name).mat", 
-                            prm = S.prm, dat = S.dat, res = S.res, est = S.est, mdl = S.mdl);
+
+
+            ## POSTERIOR MEAN (TEST) ========================================
+            P_test = StateSpaceAnalysis.posterior_mean(
+                S, 
+                S.dat.y_test,
+                S.dat.y_test_orig,  
+                S.dat.u_test, 
+                S.dat.u0_test,
+            );
+
+            write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_testPPC.mat", 
+                smooth_mean = P_test.smooth_mean,
+                filt_mean = P_test.filt_mean,
+                pred_mean = P_test.pred_mean,
+            );
+            P_test = nothing;
 
         catch err
             println(err)            
             println("COULD NOT SAVE MAT")
         end
 
-        
-        ## POSTERIOR MEAN (TRAIN) ========================================
-        P_train = StateSpaceAnalysis.posterior_mean( 
-            S, 
-            S.dat.y_train,
-            S.dat.y_train_orig,  
-            S.dat.u_train, 
-            S.dat.u0_train,
-        );
-
-        write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_trainPPC.mat", 
-            smooth_mean = P_train.smooth_mean,
-            filt_mean = P_train.filt_mean,
-            pred_mean = P_train.pred_mean,
-        );
-        P_train = nothing;
-
-
-
-
-
-        ## POSTERIOR MEAN (TEST) ========================================
-        P_test = StateSpaceAnalysis.posterior_mean(
-            S, 
-            S.dat.y_test,
-            S.dat.y_test_orig,  
-            S.dat.u_test, 
-            S.dat.u0_test,
-        );
-
-        write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_testPPC.mat", 
-            smooth_mean = P_test.smooth_mean,
-            filt_mean = P_test.filt_mean,
-            pred_mean = P_test.pred_mean,
-        );
-        P_test = nothing;
-
-
-        
     end
+    
+end
 
