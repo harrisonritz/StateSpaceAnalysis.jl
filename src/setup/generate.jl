@@ -2,7 +2,7 @@
 
 
 # init random parameters
-function gen_rand_params(S)
+function generate_rand_params(S)
 
     A = Matrix(Diagonal(rand(S.dat.x_dim)));
     B = randn(S.dat.x_dim, S.dat.u_dim);
