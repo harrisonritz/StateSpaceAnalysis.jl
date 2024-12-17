@@ -10,32 +10,41 @@
 This package provides tools for preprocessing data, fitting models, and evaluating model performance, with methods especially tailored towards neuroimaging analysis:
 
 
-### Event-related designs
+### Event-related data
 
-Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials). *StateSpaceAnalysis.jl* handles epoched data by re-using computations across batches, and it includes spline temporal bases for flexible input modeling over the epoch.   
+Neuroimaging data often has epoched/batched sequences (e.g., states x timesteps x trials). *StateSpaceAnalysis.jl* handles epoched data by reusing computations across batches, and it includes spline temporal bases for flexible input modeling over the epoch.   
 
 
-### High-dimensional Systems
+### High-dimensional systems
 
 Whole-brain modelling may require a large number of latent factors. *StateSpaceAnalysis.jl* handles scaling through efficient memory allocation, robust covariance formats (via [*PDMats.jl*](https://github.com/JuliaStats/PDMats.jl)), and regularization.  
 
 
-### Data-driven Initialization
+### Data-driven initialization
 
-We need good initialization for systems for which we don't have great domain knowledge (especially when there are many latent factors). *StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
+We need good initialization for systems for which we don't have great domain knowledge (especially when there are many latent factors). *StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods adapted from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
 
 
 ## Installation
 
-To install the *StateSpaceAnalysis.jl* package, follow these steps:
+You can easily install the current release of *StateSpaceAnalysis.jl* from the Julia General Registry:
+
+    ```julia
+    using Pkg  
+    Pkg.add("StateSpaceAnalysis")
+    ```
+
+
+You may want to work directly with the package, e.g., to modify custom functions for setting up your input bases.
+You can create a local copy by cloning the github repo:
 
 1. **Clone the repository:**
     ```sh
     git clone https://github.com/harrisonritz/StateSpaceAnalysis.jl.git
     cd StateSpaceAnalysis.jl
-    ```
+    ```    
 
-2. **Open Julia and activate the package environment:**
+2. **Open Julia in the folder and activate the package environment:**
     ```julia
     using Pkg
     Pkg.activate(".")
@@ -48,7 +57,10 @@ To install the *StateSpaceAnalysis.jl* package, follow these steps:
     using StateSpaceAnalysis
     ```
 
-This will install all the necessary dependencies and set up the StateSpaceAnalysis.jl package for use.
+This will install all the necessary dependencies and set up the StateSpaceAnalysis.jl package for local use.
+
+Note: You can check which directory you are working in with `pwd()` in Julia. Opening a folder in VS code sets that folder to your path. You can specify the paths in `Pkg.activate("path/to/package")` and `Pkg.add("path/to/package")` even in you aren't in the right folder.
+
 
 
 ## Walkthrough of the `example/fit_example.jl` script
@@ -57,22 +69,25 @@ This will install all the necessary dependencies and set up the StateSpaceAnalys
 
 ```julia
 S = core_struct(
-        prm=param_struct(
-            ... # high-level parameters
-            ), 
-        dat=data_struct(
-            ... # data and data description
-            ),
-        res=results_struct(
-            ... # fit metrics and model derivates
+    prm=param_struct(
+        ... # high-level parameters
+        ), 
+    dat=data_struct(
+        ... # data and data description
         ),
-        est=estimates_struct(
-            ... # scratch space
-        ),
-        mdl=model_struct(
-            ... # estimated model parameters
-        ),
-        );
+    res=results_struct(
+        ... # fit metrics and model derivates
+    ),
+    est=estimates_struct(
+        ... # scratch space
+    ),
+    mdl=model_struct(
+        ... # estimated model parameters
+    ),
+    fnc=function_struct{core_struct}(
+        ... # custom functions for setup
+    )
+);
 ```
 This structure is used throughout the script, which allows for effective memory management (i.e., the complier can know the size of the data tensors).
 
@@ -81,9 +96,10 @@ This structure is used throughout the script, which allows for effective memory 
 ```julia
 @reset S = StateSpaceAnalysis.preprocess_fit(S);
 ```
+
 Preprocessing steps within `preprocess_fit(S)`:
 ```julia
-# read in arguements, helpful for running on a cluster
+# read in arguments, helpful for running on a cluster
 S = deepcopy(StateSpaceAnalysis.read_args(S, ARGS));
 
 # set up the paths
@@ -96,7 +112,7 @@ S = deepcopy(StateSpaceAnalysis.load_data(S));
 S = deepcopy(StateSpaceAnalysis.build_inputs(S));
 
 # transform the observed data (PCA)
-S = deepcopy(StateSpaceAnalysis.whiten(S));
+S = deepcopy(StateSpaceAnalysis.project(S));
 
 # fit baseline models to the data
 StateSpaceAnalysis.null_loglik!(S);
@@ -105,6 +121,10 @@ StateSpaceAnalysis.null_loglik!(S);
 @reset S.est = deepcopy(set_estimates(S));
 @reset S = deepcopy(generate_rand_params(S));
 ```
+
+These preprocessing steps depend on custom code that you can modify.
+# TODO!
+
 
 ### Warm-start the EM with initial parameters from Subspace Identification (SSID):
 
@@ -194,11 +214,11 @@ StateSpaceAnalysis.save_results(S)
 
 ### `setup/setup.jl`
 
-- `read_args`: process command line arguements (for running on the cluster)
+- `read_args`: process command line arguments (for running on the cluster)
 - `setup_path`: Sets up the directory paths for saving results.
 - `load_data`: Loads the data from files.
 - `build_inputs`: Builds the input matrices for the model.
-- `whiten`: Whitens the observations (PCA).
+- `project`: projects the observations (PCA).
 
 ### `setup/generate.jl`
 

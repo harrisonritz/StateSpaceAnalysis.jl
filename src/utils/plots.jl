@@ -37,10 +37,10 @@ function plot_trial_pred(S, trial)
     P, _, mean_yhat, mean_orig_yhat = generate_PPC(S,trial);
 
 
-    println("pred-obs R2 (whitened) = $(round(cor(vec(P.pred_white_y), vec(P.obs_white_y)).^2, digits=4))")
+    println("pred-obs R2 (projected) = $(round(cor(vec(P.pred_proj_y), vec(P.obs_proj_y)).^2, digits=4))")
     println("pred-obs R2 (original) = $(round(cor(vec(P.pred_orig_y), vec(P.obs_orig_y)).^2, digits=4))")
 
-    println("mean-obs R2 (whitened) = $(round(cor(vec(mean_yhat), vec(P.obs_white_y)).^2, digits=4))")
+    println("mean-obs R2 (projected) = $(round(cor(vec(mean_yhat), vec(P.obs_proj_y)).^2, digits=4))")
     println("mean-obs R2 (original) = $(round(cor(vec(mean_orig_yhat), vec(P.obs_orig_y)).^2, digits=4))")
 
     # plot data
@@ -132,14 +132,14 @@ function plot_loglik_traces(S)
 
             plt_test=plot(S.res.test_loglik, legend=false, title="test loglik", xlabel="Iteration", ylabel="loglik")
 
-            plt_R2_white=plot(S.res.test_R2_white, legend=false, title="test R2 (white)", xlabel="Iteration", ylabel="R2")
+            plt_R2_proj=plot(S.res.test_R2_proj, legend=false, title="test R2 (proj)", xlabel="Iteration", ylabel="R2")
             # plt_R2_orig=plot(S.res.test_R2_orig, legend=false, title="test R2 (orig)", xlabel="Iteration", ylabel="R2")
 
-            plt_R2_fwd=plot(S.res.fwd_R2_white, label="white", title="forward pred R2", xlabel="lookahead", ylabel="R2", ylims=(0.0,1.0)) 
+            plt_R2_fwd=plot(S.res.fwd_R2_proj, label="proj", title="forward pred R2", xlabel="lookahead", ylabel="R2", ylims=(0.0,1.0)) 
             plt_R2_fwd=plot!(S.res.fwd_R2_orig, label="orig", title="forward pred R2", xlabel="lookahead", ylabel="R2") 
 
 
-            plot(plt_em,plt_em_sep, plt_test, plt_R2_white, plt_R2_fwd, layout=(3,2), size=(1200,1200))
+            plot(plt_em,plt_em_sep, plt_test, plt_R2_proj, plt_R2_fwd, layout=(3,2), size=(1200,1200))
 
         end
 
@@ -184,7 +184,7 @@ function plot_params(S)
     plt_A = plot_square(S.mdl.A, "A");
 
     plot_Ai = plot(title="eig(A)", aspect_ratio=1);
-    plt_Ai = scatter!(eigen(S.mdl.A).values, label="", marker=:circle, color=:white, markersize=5, legend=false);
+    plt_Ai = scatter!(eigen(S.mdl.A).values, label="", marker=:circle, color=:proj, markersize=5, legend=false);
     plot_Ai = plot!(sin.(-pi:.001:pi), cos.(-pi:.001:pi), color=:black, label="")
 
     plt_B = plot_rect(S.mdl.B, "B");

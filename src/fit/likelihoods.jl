@@ -345,8 +345,8 @@ function null_loglik!(S)
                 null_ll += logpdf(MvNormal(pred_res[tt,:], pred_cov), test_zeros);
         end
 
-        S.res.null_sse_white[mm] = sumsqr(pred_res);
-        S.res.null_mse_white[mm] = sumsqr(pred_res)./length(pred_res);
+        S.res.null_sse_proj[mm] = sumsqr(pred_res);
+        S.res.null_mse_proj[mm] = sumsqr(pred_res)./length(pred_res);
 
         remix_res = StateSpaceAnalysis.remix(S,pred_res');
         S.res.null_sse_orig[mm] = sumsqr(remix_res);

@@ -6,6 +6,8 @@ using Random
 using LinearAlgebra
 using Dates
 using Revise # this is for development
+import FunctionWrappers: FunctionWrapper
+
 # =============================================================
 
 
@@ -109,6 +111,8 @@ S = core_struct(
     est=estimates_struct(),
 
     mdl=model_struct(),
+
+    fcn=function_struct{core_struct}(),
 
 );
 println("--- changelog: ",S.prm.changelog, " ---\n\n")
