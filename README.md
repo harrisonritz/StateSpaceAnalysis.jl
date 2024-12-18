@@ -24,6 +24,7 @@ Whole-brain modelling may require a large number of latent factors. *StateSpaceA
 
 We need good initialization for systems for which we don't have great domain knowledge (especially when there are many latent factors). *StateSpaceAnalysis.jl* handles parameter initialization through subspace identification methods adapted from [*ControlSystemsIdentification.jl*](https://github.com/baggepinnen/ControlSystemIdentification.jl).
 
+This version is very preliminary, so there may be some rough edges!
 
 ## Installation
 
