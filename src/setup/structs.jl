@@ -2,20 +2,60 @@
 
 
 
+
+# custom functions
+@kwdef struct function_struct{T}
+
+    # assign_arguments(S, conds)
+    # assign_arguments::FunctionWrapper{T, Tuple{T, VecOrMat{Any}}} = StateSpaceAnalysis.assign_arguments
+
+    # select_trials(S)
+    select_trials::FunctionWrapper{T, Tuple{T}} = StateSpaceAnalysis.select_trials
+
+    # scale_input(u,sel)
+    scale_input::FunctionWrapper{VecOrMat{Float64}, Tuple{VecOrMat{Float64}, BitArray}} = StateSpaceAnalysis.scale_input
+
+    # create_input_basis(S, n_trials)
+    create_input_basis::FunctionWrapper{Tuple{Array{Float64}, Int64, Int64, VecOrMat{String}}, Tuple{T, Int64}} = StateSpaceAnalysis.create_input_basis
+
+    #transform_observations(S, y_long)
+    transform_observations::FunctionWrapper{T, Tuple{T, VecOrMat{Float64}}} = StateSpaceAnalysis.transform_observations
+
+    # format_B_preSSID(S)
+    format_B_preSSID::FunctionWrapper{Array{Float64}, Tuple{T}} = StateSpaceAnalysis.format_B_preSSID
+
+    # format_B_postSSID(S)
+    format_B_postSSID::FunctionWrapper{VecOrMat{Float64}, Tuple{T, AbstractPredictionStateSpace}} = StateSpaceAnalysis.format_B_postSSID
+
+end
+
+
+
+
+
+
+
 @kwdef struct param_struct
 
     # model name & changelog
     model_name::String = "test"
     save_name::String = "test"
     changelog::String = ""
+    
+    # arguments
     arg_num = 0
+    cond_field = ["pt", "x_dim"]
+    cond_list_fast = ["pt_list", "x_dim_fast"]
+    cond_list_slow = ["pt_list", "x_dim_slow"]
 
     # filename
     load_name::String = ""
     load_path::String = ""
 
+    # random seed
     seed::Int64 = 99
 
+    # EM parameters
     max_iter_em::Int64 = 2e4        # max iterations for EM
     test_iter::Int64 = 100          # compute test loglik every n iterations
     check_train_iter::Int64 = 100   # check total loglik after n iterations
@@ -25,22 +65,24 @@
 
     pt_list::Union{UnitRange{Int64}, Vector{Int64}, Int64} = 1:1
 
+    # factor number (split up by fast and slow because large facts take longer)
     x_dim_fast::Array{Int64,1} = round.(Int64, 16:16:128)
     x_dim_slow::Array{Int64,1} = round.(Int64, 144:16:256)
     do_fast = true
 
+    # SSID
     ssid_fit::String = "fit"
     ssid_save::Bool = false
     ssid_lag::Int64 = 10
     ssid_type::Symbol = :CVA
 
+    # PCA
     y_transform::String = "PCA"
     PCA_ratio::Float64 = 0.99
     PCA_maxdim::Int64 = 1000
 
     do_trial_sel::Bool = false # select trials
     
-
 
     # priors
     lam_AB::UniformScaling{Float64} = 1e-6I
@@ -55,17 +97,21 @@
     mu_R::UniformScaling{Float64} = .001I   # only matters if df_R > 0
     mu_P0::UniformScaling{Float64} = .1I    # only matters if df_P0 > 0
 
-    Q_refine_type::String = "full"
-    R_refine_type::String = "full"
-    P0_refine_type::String = "full"
+    Q_init_type::String = "full"
+    R_init_type::String = "full"
+    P0_init_type::String = "full"
 
+    # noise types
     Q_type::String = "full"
     R_type::String = "full"
     P0_type::String = "full"
 
+    # save
     save_path::String = pkgdir(StateSpaceAnalysis)
     do_save::Bool = false
-    write_mat::Bool = true
+    write_struct_jls ::Bool = false
+    write_struct_mat ::Bool = true
+    write_post_mat ::Bool = true
 
 end
 
@@ -236,22 +282,22 @@ end
 
     # logliks
     null_loglik::Vector{Float64} = zeros(4)
-    null_sse_white::Vector{Float64} = zeros(4)
+    null_sse_proj::Vector{Float64} = zeros(4)
     null_sse_orig::Vector{Float64} = zeros(4)
-    null_mse_white::Vector{Float64} = zeros(4)
+    null_mse_proj::Vector{Float64} = zeros(4)
     null_mse_orig::Vector{Float64} = zeros(4)
 
-    ssid_test_R2_white::Float64 = 0.0
+    ssid_test_R2_proj::Float64 = 0.0
     ssid_test_R2_orig::Float64 = 0.0
-    test_R2_white::Vector{Float64} = zeros(0)
+    test_R2_proj::Vector{Float64} = zeros(0)
     test_R2_orig::Vector{Float64} = zeros(0)
 
-    ssid_fwd_R2_white::Vector{Float64} = zeros(0)
+    ssid_fwd_R2_proj::Vector{Float64} = zeros(0)
     ssid_fwd_R2_orig::Vector{Float64} = zeros(0)
-    fwd_R2_white::Vector{Float64} = zeros(0)
+    fwd_R2_proj::Vector{Float64} = zeros(0)
     fwd_R2_orig::Vector{Float64} = zeros(0)
 
-    test_sse_white::Vector{Float64} = zeros(0)
+    test_sse_proj::Vector{Float64} = zeros(0)
     test_sse_orig::Vector{Float64} = zeros(0)
 
     init_loglik::Vector{Float64} = zeros(0)
@@ -408,6 +454,8 @@ end
 
 
 
+
+
 @kwdef struct core_struct
 
     prm::param_struct
@@ -415,6 +463,7 @@ end
     res::results_struct
     est::estimates_struct
     mdl::model_struct
+    fcn::function_struct
 
 end
 
@@ -431,20 +480,20 @@ end
     smooth_cov::Vector{Vector{PDMats.PDMat{Float64, Matrix{Float64}}}} = [[init_PD(0)]]
 
 
-    obs_white_y::Array{Float64} = zeros(0,0,0)
-    pred_white_y::Array{Float64} = zeros(0,0,0)
-    filt_white_y::Array{Float64} = zeros(0,0,0)
-    smooth_white_y::Array{Float64} = zeros(0,0,0)
+    obs_proj_y::Array{Float64} = zeros(0,0,0)
+    pred_proj_y::Array{Float64} = zeros(0,0,0)
+    filt_proj_y::Array{Float64} = zeros(0,0,0)
+    smooth_proj_y::Array{Float64} = zeros(0,0,0)
     
     obs_orig_y::Array{Float64} = zeros(0,0,0)
     pred_orig_y::Array{Float64} = zeros(0,0,0)
     filt_orig_y::Array{Float64} = zeros(0,0,0)
     smooth_orig_y::Array{Float64} = zeros(0,0,0)
 
-    sse_white::Vector{Float64} = [0.0]
+    sse_proj::Vector{Float64} = [0.0]
     sse_orig::Vector{Float64} = [0.0]
 
-    sse_fwd_white::Vector{Float64} = zeros(26)
+    sse_fwd_proj::Vector{Float64} = zeros(26)
     sse_fwd_orig::Vector{Float64} = zeros(26)
 
 end
@@ -463,10 +512,10 @@ end
 
 @kwdef struct post_sse
 
-    sse_white::Vector{Float64} = [0.0]
+    sse_proj::Vector{Float64} = [0.0]
     sse_orig::Vector{Float64} = [0.0]
 
-    sse_fwd_white::Vector{Float64} = zeros(26)
+    sse_fwd_proj::Vector{Float64} = zeros(26)
     sse_fwd_orig::Vector{Float64} = zeros(26)
 
 end

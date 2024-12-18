@@ -20,17 +20,17 @@ function posterior_all(S, y, y_orig, u, u0)
             filt_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps] for _ in 1:n_trials],
             smooth_cov = [[init_PD(S.dat.x_dim) for _ in 1:S.dat.n_steps] for _ in 1:n_trials],
 
-            obs_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
-            pred_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
-            filt_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
-            smooth_white_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            obs_proj_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            pred_proj_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            filt_proj_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
+            smooth_proj_y = zeros(S.dat.y_dim, S.dat.n_steps,n_trials),
 
             obs_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
             pred_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
             filt_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
             smooth_orig_y = zeros(S.dat.n_chans, S.dat.n_steps,n_trials),
 
-            sse_white = [0.0],
+            sse_proj = [0.0],
             sse_orig = [0.0],
 
         );
@@ -81,16 +81,16 @@ function posterior_all(S, y, y_orig, u, u0)
         P.smooth_mean[:,:,tl] .= S.est.smooth_mean;
         P.smooth_cov[tl] .= S.est.smooth_cov;
 
-        P.obs_white_y[:,:,tl] .= y[:,:,tl];
-        P.pred_white_y[:,:,tl] .= S.mdl.C * S.est.pred_mean;
-        P.filt_white_y[:,:,tl] .= S.mdl.C * S.est.filt_mean;
-        P.smooth_white_y[:,:,tl] .= S.mdl.C * S.est.smooth_mean;
+        P.obs_proj_y[:,:,tl] .= y[:,:,tl];
+        P.pred_proj_y[:,:,tl] .= S.mdl.C * S.est.pred_mean;
+        P.filt_proj_y[:,:,tl] .= S.mdl.C * S.est.filt_mean;
+        P.smooth_proj_y[:,:,tl] .= S.mdl.C * S.est.smooth_mean;
         
         if S.dat.W == zeros(0,0)
-            P.obs_orig_y[:,:,tl] .= P.obs_white_y[tl];
-            P.pred_orig_y[:,:,tl] .= P.pred_white_y[tl];
-            P.filt_orig_y[:,:,tl] .= P.filt_white_y[tl];
-            P.smooth_orig_y[:,:,tl] .= P.smooth_white_y[tl];
+            P.obs_orig_y[:,:,tl] .= P.obs_proj_y[tl];
+            P.pred_orig_y[:,:,tl] .= P.pred_proj_y[tl];
+            P.filt_orig_y[:,:,tl] .= P.filt_proj_y[tl];
+            P.smooth_orig_y[:,:,tl] .= P.smooth_proj_y[tl];
         else
             P.obs_orig_y[:,:,tl] .= y_orig[:,:,tl];
             P.pred_orig_y[:,:,tl] .= StateSpaceAnalysis.remix(S, S.mdl.C * S.est.pred_mean);
@@ -98,7 +98,7 @@ function posterior_all(S, y, y_orig, u, u0)
             P.smooth_orig_y[:,:,tl] .= StateSpaceAnalysis.remix(S, S.mdl.C * S.est.smooth_mean);
         end
 
-        P.sse_white[1] += sumsqr(P.obs_white_y[tl] .-  P.pred_white_y[tl]);
+        P.sse_proj[1] += sumsqr(P.obs_proj_y[tl] .-  P.pred_proj_y[tl]);
         P.sse_orig[1] += sumsqr(P.obs_orig_y[tl].-  P.pred_orig_y[tl]);
 
         for ii in 0:25
@@ -111,7 +111,7 @@ function posterior_all(S, y, y_orig, u, u0)
                 end
             end
 
-            P.sse_fwd_white[ii+1] += sumsqr(pred_y .-  P.obs_white_y[:, (ii+1):end,tl]);
+            P.sse_fwd_proj[ii+1] += sumsqr(pred_y .-  P.obs_proj_y[:, (ii+1):end,tl]);
             P.sse_fwd_orig[ii+1] += sumsqr(StateSpaceAnalysis.remix(S, pred_y) .-  P.obs_orig_y[:, (ii+1):end,tl]);
 
         end
@@ -187,9 +187,9 @@ function posterior_sse(S, y, y_orig, u, u0)
     n_trials = size(y,3);
 
     P = post_sse(
-            sse_white = [0.0],
+            sse_proj = [0.0],
             sse_orig = [0.0],
-            sse_fwd_white = zeros(26),
+            sse_fwd_proj = zeros(26),
             sse_fwd_orig = zeros(26),
         );
 
@@ -229,7 +229,7 @@ function posterior_sse(S, y, y_orig, u, u0)
 
 
         # SAVE RESULTS ==================================
-        P.sse_white[1] += sumsqr(y[:,:,tl] .- S.mdl.C*S.est.pred_mean);
+        P.sse_proj[1] += sumsqr(y[:,:,tl] .- S.mdl.C*S.est.pred_mean);
         P.sse_orig[1] += sumsqr(y_orig[:,:,tl] .-  StateSpaceAnalysis.remix(S, S.mdl.C * S.est.pred_mean));
 
         for ii in 0:25
@@ -242,7 +242,7 @@ function posterior_sse(S, y, y_orig, u, u0)
                 end
             end
 
-            P.sse_fwd_white[ii+1] += sumsqr(pred_y .-  y[:,(ii+1):end,tl]);
+            P.sse_fwd_proj[ii+1] += sumsqr(pred_y .-  y[:,(ii+1):end,tl]);
             P.sse_fwd_orig[ii+1] += sumsqr(StateSpaceAnalysis.remix(S, pred_y) .-  y_orig[:,(ii+1):end,tl]);
 
         end

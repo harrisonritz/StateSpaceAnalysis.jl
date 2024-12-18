@@ -2,7 +2,7 @@
 
 
 
-# read in arguements from command line
+# read in arguments from command line
 function read_args(S, arg_in)
     """
         read_args(S::core_struct, arg_in::Array{String})
@@ -11,26 +11,28 @@ function read_args(S, arg_in)
     """
 
     
-    # load arguements from command line
+    # load arguments from command line
     println("ARGS: $arg_in")
 
-    if isempty(arg_in)
-
-        arg_num = 0;
-        do_fast = true;
-
-    else
-
+    arg_num = 0;
+    do_fast = true;
+    if length(arg_in) > 0
         arg_num = parse(Int64, arg_in[1]);
+    end
+    if length(arg_in) > 1
         do_fast = parse(Bool, arg_in[2]); 
-
     end
 
     # get conditions
+    # if do_fast
+    #     arg_list = [collect(S.prm.pt_list), S.prm.x_dim_fast];
+    # else
+    #     arg_list = [collect(S.prm.pt_list), S.prm.x_dim_slow];
+    # end
     if do_fast
-        arg_list = [collect(S.prm.pt_list), S.prm.x_dim_fast];
+        arg_list = [collect(getproperty(S.prm, Symbol(S.prm.cond_list_fast[ii]))) for ii in 1:length(S.prm.cond_list_fast)];
     else
-        arg_list = [collect(S.prm.pt_list), S.prm.x_dim_slow];
+        arg_list = [collect(getproperty(S.prm, Symbol(S.prm.cond_list_slow[ii]))) for ii in 1:length(S.prm.cond_list_fast)];
     end
 
 
@@ -44,9 +46,19 @@ function read_args(S, arg_in)
         end
         conds = [entry[index] for (entry, index) in zip(arg_list, indices)];
 
-        # assign conditions
-        @reset S = assign_arguements(S, conds)
-        @reset S.prm.arg_num = parse(Int64, arg_in[1]);
+        # assign conditions TODO: solve this later!
+        # for cc in eachindex(conds)
+        #     S = set_nested_field!(S, conds[cc], :dat, Symbol(S.prm.cond_field[cc]))
+        # end
+        # lens = foldl(@optic(_[_]), [:dat, Symbol(S.prm.cond_field[cc])])
+        # @reset S[lens] = conds[cc]
+        #  set_nested_field!(dat, Symbol(S.prm.cond_field[cc]), conds[cc]);
+        # @reset S = S.fcn.assign_arguments(S, conds)
+
+        @reset S.dat.pt = conds[1];
+        @reset S.dat.x_dim = conds[2];
+
+        @reset S.prm.arg_num = arg_num;
 
     end
 
@@ -83,11 +95,11 @@ function setup_path(S)
 
 
     # make output folders
-    mkpath("$(S.prm.save_path)/fit-results/SSID-jls/$(S.prm.model_name)")
-    mkpath("$(S.prm.save_path)/fit-results/figures/$(S.prm.model_name)")
-    mkpath("$(S.prm.save_path)/fit-results/EM-jls/$(S.prm.model_name)")
-    mkpath("$(S.prm.save_path)/fit-results/EM-mat/$(S.prm.model_name)")
-    mkpath("$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC")
+    mkpath(joinpath(S.prm.save_path, "fit-results", "SSID-jls", S.prm.model_name))
+    mkpath(joinpath(S.prm.save_path, "fit-results", "figures", S.prm.model_name))
+    mkpath(joinpath(S.prm.save_path, "fit-results", "EM-jls", S.prm.model_name))
+    mkpath(joinpath(S.prm.save_path, "fit-results", "EM-mat", S.prm.model_name))
+    mkpath(joinpath(S.prm.save_path, "fit-results", "PPC-mat", "$(S.prm.model_name)_PPC"))
 
 end
 
@@ -99,7 +111,7 @@ function load_data(S)
 
     # load data
     if length(S.prm.load_path)>0
-        raw_data = matread("$(S.prm.load_path)/$(S.prm.load_name)/$(S.prm.load_name)_$(S.dat.pt).mat")
+        raw_data = matread(joinpath(S.prm.load_path, S.prm.load_name, "$(S.prm.load_name)_$(S.dat.pt).mat"))
     else
         error("no data path provided")
     end
@@ -123,7 +135,7 @@ function load_data(S)
     end
 
     # select trials (custom trial sel + train/test split)
-    @reset S = deepcopy(select_trials(S));
+    @reset S = deepcopy(S.fcn.select_trials(S));
 
     # select time points
     if !isempty(S.dat.events)
@@ -206,7 +218,7 @@ function build_inputs(S)
                 for uu in eachindex(u_list[pp]) # this loop allows for interaction terms
 
                     u_cond = S.dat.trial[u_list[pp][uu]];
-                    z_cond .*= scale_input(u_cond, sel)
+                    z_cond .*= S.fcn.scale_input(u_cond, sel)
 
                 end
 
@@ -217,7 +229,7 @@ function build_inputs(S)
       
 
         # build basis set
-        u, n_bases, u_dim, pred_basis = create_input_basis(S, n_trials) # create basis set (custom.jl)
+        u, n_bases, u_dim, pred_basis = S.fcn.create_input_basis(S, n_trials) # create basis set (custom.jl)
         @reset S.dat.n_bases = n_bases;
         @reset S.dat.u_dim = u_dim;
     
@@ -245,7 +257,7 @@ function build_inputs(S)
                 for uu in eachindex(u0_list[pp])
                     
                     u0_cond = S.dat.trial[u0_list[pp][uu]];
-                    z_cond .*= scale_input(u0_cond, sel)
+                    z_cond .*= S.fcn.scale_input(u0_cond, sel)
 
                 end
 
@@ -302,9 +314,9 @@ end
 
 
 
-function whiten(S)
+function project(S)
     """
-        whiten(S::core_struct)
+        project(S::core_struct)
 
     transform the observations using PCA.
     """
@@ -312,7 +324,7 @@ function whiten(S)
     # orthogonalize data
 
     y_long = reshape(S.dat.y_train_orig, S.dat.n_chans, S.dat.n_steps*S.dat.n_train);
-    @reset S = deepcopy(transform_observations(S, y_long));
+    @reset S = deepcopy(S.fcn.transform_observations(S, y_long));
 
 
     # transform train ==================================

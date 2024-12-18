@@ -27,7 +27,7 @@ function fit_SSID(S)
     y_long = reshape(y, size(y,1), size(y,2)*size(y,3));
 
     # use subset of predictors to keep SSID well-posed + reduce computation
-    u = format_B_preSSID(S);
+    u = S.fcn.format_B_preSSID(S);
     u_long = reshape(u, size(u,1), size(u,2)*size(u,3));
 
     # make system
@@ -55,7 +55,7 @@ function fit_SSID(S)
     Ad = deepcopy(sys.A);
 
     # reformat B matrix
-    Bd = format_B_postSSID(S, sys);
+    Bd = S.fcn.format_B_postSSID(S, sys);
 
     Cd = deepcopy(sys.C);
 
@@ -63,9 +63,9 @@ function fit_SSID(S)
     B0d = x0/S.dat.u0_train;
 
     # noise terms
-    Qd = format_noise(sys.Q, S.prm.Q_refine_type);
-    Rd = format_noise(sys.R, S.prm.R_refine_type);
-    P0d = format_noise(sys.P, S.prm.P0_refine_type);
+    Qd = format_noise(sys.Q, S.prm.Q_init_type);
+    Rd = format_noise(sys.R, S.prm.R_init_type);
+    P0d = format_noise(sys.P, S.prm.P0_init_type);
       
 
     # save model ==================================================

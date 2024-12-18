@@ -21,8 +21,8 @@ function preprocess_fit(S)
     # =============================================================
 
 
-    # WHITEN DATA ==============================================
-    S = deepcopy(StateSpaceAnalysis.whiten(S));
+    # project DATA ==============================================
+    S = deepcopy(StateSpaceAnalysis.project(S));
     # =============================================================
 
 
@@ -105,9 +105,9 @@ function launch_SSID(S)
 
     # save R2
     P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
-    @reset S.res.ssid_test_R2_white = 1.0 - (P.sse_white[1] / S.res.null_sse_white[end]);        
+    @reset S.res.ssid_test_R2_proj = 1.0 - (P.sse_proj[1] / S.res.null_sse_proj[end]);        
     @reset S.res.ssid_test_R2_orig = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[end]); 
-    @reset S.res.ssid_fwd_R2_white = 1.0 .- (P.sse_fwd_white ./ S.res.null_sse_white[1]);        
+    @reset S.res.ssid_fwd_R2_proj = 1.0 .- (P.sse_fwd_proj ./ S.res.null_sse_proj[1]);        
     @reset S.res.ssid_fwd_R2_orig = 1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]);         
     
     
@@ -164,8 +164,7 @@ function load_SSID(S)
     println("\n\n\n\n========== LOADING SSID ==========")
 
     # sleep until file is found
-    ssid_file = "$(S.prm.save_path)/fit-results/SSID-jls/$(S.prm.model_name)/$(S.prm.model_name)_Pt$(S.dat.pt)_xdim$(S.prm.ssid_lag)_SSID.jls";
-    found_file = false
+    ssid_file = joinpath(S.prm.save_path, "fit-results", "SSID-jls", S.prm.model_name, "$(S.prm.model_name)_Pt$(S.dat.pt)_xdim$(S.prm.ssid_lag)_SSID.jls")
 
     println("searching for saved SSID file: $(ssid_file)\n")
     while ~found_file
@@ -181,7 +180,7 @@ function load_SSID(S)
     end
 
     # load file
-    Sl = deserialize("$(S.prm.save_path)/fit-results/SSID-jls/$(S.prm.model_name)/$(S.prm.model_name)_Pt$(S.dat.pt)_xdim$(S.prm.ssid_lag)_SSID.jls");
+    Sl = deserialize(joinpath(S.prm.save_path, "fit-results", "SSID-jls", S.prm.model_name, "$(S.prm.model_name)_Pt$(S.dat.pt)_xdim$(S.prm.ssid_lag)_SSID.jls"))
 
 
     # take first x_dim dimensions of estimated parameters
@@ -211,7 +210,7 @@ function load_SSID(S)
 
     # save R2
     P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
-    @reset S.res.ssid_test_R2_white = 1.0 - (P.sse_white[1] / S.res.null_sse_white[end]);        
+    @reset S.res.ssid_test_R2_proj = 1.0 - (P.sse_proj[1] / S.res.null_sse_proj[end]);        
     @reset S.res.ssid_test_R2_orig = 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[end]);       
     
     return S
@@ -225,7 +224,7 @@ function save_SSID(S)
 
     # CORE STRUCT (JLS) ========================================
     try
-        serialize("$(S.prm.save_path)/fit-results/SSID-jls/$(S.prm.model_name)/$(S.prm.save_name)_SSID.jls", S)
+        serialize(joinpath(S.prm.save_path, "fit-results", "SSID-jls", S.prm.model_name, "$(S.prm.save_name)_SSID.jls"), S) 
     catch err
         println(err)
         println("COULD NOT SAVE JLS")
@@ -239,66 +238,81 @@ end
 function save_results(S)
 
 
-    # CORE STRUCT (JLS) ========================================
-    try
-        serialize("$(S.prm.save_path)/fit-results/EM-jls/$(S.prm.model_name)/$(S.prm.save_name).jls", S)
-    catch err
-        println(err)
-        println("COULD NOT SAVE JLS")
-    end
+    # save core struct to Julia jls ========================================
+    if S.prm.write_struct_jls
 
-
-    if S.prm.write_mat
-        
         try
-
-            # CORE STRUCT (MAT) ========================================
-                write_matfile(  "$(S.prm.save_path)/fit-results/EM-mat/$(S.prm.model_name)/$(S.prm.save_name).mat", 
-                                prm = S.prm, dat = S.dat, res = S.res, est = S.est, mdl = S.mdl);
-
-            
-            ## POSTERIOR MEAN (TRAIN) ========================================
-            P_train = StateSpaceAnalysis.posterior_mean( 
-                S, 
-                S.dat.y_train,
-                S.dat.y_train_orig,  
-                S.dat.u_train, 
-                S.dat.u0_train,
-            );
-
-            write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_trainPPC.mat", 
-                smooth_mean = P_train.smooth_mean,
-                filt_mean = P_train.filt_mean,
-                pred_mean = P_train.pred_mean,
-            );
-            P_train = nothing;
-
-
-
-
-
-            ## POSTERIOR MEAN (TEST) ========================================
-            P_test = StateSpaceAnalysis.posterior_mean(
-                S, 
-                S.dat.y_test,
-                S.dat.y_test_orig,  
-                S.dat.u_test, 
-                S.dat.u0_test,
-            );
-
-            write_matfile(  "$(S.prm.save_path)/fit-results/PPC-mat/$(S.prm.model_name)_PPC/$(S.prm.save_name)_testPPC.mat", 
-                smooth_mean = P_test.smooth_mean,
-                filt_mean = P_test.filt_mean,
-                pred_mean = P_test.pred_mean,
-            );
-            P_test = nothing;
-
+            serialize(joinpath(S.prm.save_path, "fit-results", "EM-jls", S.prm.model_name, "$(S.prm.save_name).jls"), S) 
         catch err
-            println(err)            
-            println("COULD NOT SAVE MAT")
+            println(err)
+            println("COULD NOT SAVE JLS")
         end
 
     end
-    
+
+
+        
+        try # MAT FILES ========================================
+
+
+            # save core struct to mat ========================================
+            if S.prm.write_struct_mat
+
+                write_matfile(joinpath(S.prm.save_path, "fit-results", "EM-mat", S.prm.model_name, S.prm.save_name * ".mat"),
+                            prm = S.prm, 
+                            dat = S.dat, 
+                            res = S.res, 
+                            est = S.est, 
+                            mdl = S.mdl,
+                            );
+
+            end
+
+
+            # save posteriors to mat ========================================
+            if S.prm.write_post_mat
+
+                
+
+                ## POSTERIOR MEAN (TRAIN) ========================================
+                P_train = StateSpaceAnalysis.posterior_mean( 
+                    S, 
+                    S.dat.y_train,
+                    S.dat.y_train_orig,  
+                    S.dat.u_train, 
+                    S.dat.u0_train,
+                );
+                write_matfile(joinpath(S.prm.save_path, "fit-results", "PPC-mat", "$(S.prm.model_name)_PPC", "$(S.prm.save_name)_trainPPC.mat"),  
+                    smooth_mean = P_train.smooth_mean,
+                    filt_mean = P_train.filt_mean,
+                    pred_mean = P_train.pred_mean,
+                );
+                P_train = nothing;
+
+
+                ## POSTERIOR MEAN (TEST) ========================================
+                P_test = StateSpaceAnalysis.posterior_mean(
+                    S, 
+                    S.dat.y_test,
+                    S.dat.y_test_orig,  
+                    S.dat.u_test, 
+                    S.dat.u0_test,
+                );
+                write_matfile(joinpath(S.prm.save_path, "fit-results", "PPC-mat", "$(S.prm.model_name)_PPC", "$(S.prm.save_name)_testPPC.mat"), 
+                    smooth_mean = P_test.smooth_mean,
+                    filt_mean = P_test.filt_mean,
+                    pred_mean = P_test.pred_mean,
+                );
+                
+                P_test = nothing;
+
+            end
+
+    catch err
+        println(err)            
+        println("COULD NOT SAVE MAT")
+    end
+
 end
+    
 

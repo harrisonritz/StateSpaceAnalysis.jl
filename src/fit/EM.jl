@@ -4,20 +4,33 @@
 
 function fit_EM(S); 
     """
-        fit_EM(S::core_struct)
+        fit_EM(S::core_struct) -> core_struct
 
-    Fit a probabilistic state-space model using the Expectation-Maximization (EM) algorithm.
+    Fit a linear-Gaussian state space model using the Expectation-Maximization (EM) algorithm.
 
-    # Arguement and Output
-    - `S`: core_struct containing the parameters, data, and results of the model fit.
-   
+    # Arguments
+    - `S`: Core structure containing model parameters, data, and results
+
     # Description
-    The `fit_EM` function implements the EM algorithm to estimate the parameters of a probabilistic model. 
-    It iteratively performs:
-        1. Expectation (E) step, computing the expected value of the log-likelihood with respect to the current parameter estimates
-        2. Maximization (M) step, updating the parameters to maximize this expected log-likelihood
-        3. Checks for convergence of the log-likelihood and stops if the change is below a threshold.
+    Implements the EM algorithm to estimate optimal parameters by iteratively:
+    1. E-step: Computes expected sufficient statistics given current parameters 
+    2. M-step: Updates parameters to maximize expected log-likelihood
+    3. Evaluates convergence using training and/or test log-likelihood
 
+    Key steps per iteration:
+    - Calls `ESTEP!` to compute expectations
+    - Calls `MSTEP` to update parameters
+    - Computes log-likelihood and R² metrics
+    - Checks convergence criteria
+
+    The function tracks convergence by monitoring changes in log-likelihood and R² on held-out test data.
+    Stops when likelihood improvements fall below `S.prm.train_threshold` or `S.prm.test_threshold`.
+
+    # Returns
+    Updated `core_struct` with:
+    - Estimated model parameters in `S.mdl`
+    - Fit metrics in `S.res`
+    - Final expectations in `S.est`
     """
 
     # start the clock
@@ -54,12 +67,12 @@ function fit_EM(S);
 
             @reset S.est = deepcopy(set_estimates(S));
             StateSpaceAnalysis.test_loglik!(S);
-            push!(S.res.test_R2_white, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
+            push!(S.res.test_R2_proj, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
 
             if length(S.res.test_loglik) > 1
-                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), Δll: $(round(S.res.total_loglik[end] - S.res.total_loglik[end-1],digits=2)) // test R2:$(round(S.res.test_R2_white[end],digits=4))")
+                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), Δll: $(round(S.res.total_loglik[end] - S.res.total_loglik[end-1],digits=2)) // test R2:$(round(S.res.test_R2_proj[end],digits=4))")
             else
-                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), test R2:$(round(S.res.test_R2_white[end],digits=4))")
+                println("[$(em_iter)] total ll: $(round(S.res.total_loglik[em_iter],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)), test R2:$(round(S.res.test_R2_proj[end],digits=4))")
             end
 
         end
@@ -112,20 +125,20 @@ function fit_EM(S);
     StateSpaceAnalysis.test_loglik!(S);
     P = StateSpaceAnalysis.posterior_sse(S, S.dat.y_test, S.dat.y_test_orig, S.dat.u_test, S.dat.u0_test);
 
-    push!(S.res.test_R2_white, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
+    push!(S.res.test_R2_proj, ll_R2(S, S.res.test_loglik[end], S.res.null_loglik[end]));    
     push!(S.res.test_R2_orig, 1.0 - (P.sse_orig[1] / S.res.null_sse_orig[end]));
     
-    @reset S.res.fwd_R2_white = 1.0 .- (P.sse_fwd_white ./ S.res.null_sse_white[1]);            
+    @reset S.res.fwd_R2_proj = 1.0 .- (P.sse_fwd_proj ./ S.res.null_sse_proj[1]);            
     @reset S.res.fwd_R2_orig = 1.0 .- (P.sse_fwd_orig ./ S.res.null_sse_orig[1]);
 
-    push!(S.res.test_sse_white, P.sse_white[1]);    
+    push!(S.res.test_sse_proj, P.sse_proj[1]);    
     push!(S.res.test_sse_orig, P.sse_orig[1]);
     # ===========================================================
 
      
     
 
-    println("[END] total ll: $(round(S.res.total_loglik[end],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)) // test R2: white:$(round(S.res.test_R2_white[end],digits=4)), orig:$(round(S.res.test_R2_orig[end],digits=4))")
+    println("[END] total ll: $(round(S.res.total_loglik[end],digits=2)) // test ll: $(round(S.res.test_loglik[end],digits=2)) // test R2: proj:$(round(S.res.test_R2_proj[end],digits=4)), orig:$(round(S.res.test_R2_orig[end],digits=4))")
     println("")
 
 
@@ -146,8 +159,27 @@ end
 function ESTEP!(S)
     
     """
-    run E-step for individual participants
+        ESTEP!(S::core_struct)
 
+    Perform the E-step of the EM algorithm by computing expected sufficient statistics.
+
+    # Arguments
+    - `S`: Core structure containing current model parameters and data
+
+    # Description
+    Computes expectations in three phases:
+    1. Calls `estimate_cov!` for state covariances
+    2. Calls `init_moments!` to setup statistics
+    3. Calls `estimate_mean!` for state means
+    4. Updates moment matrices for M-step
+
+    # Implementation Notes
+    - Updates expectations in-place in `S.est`
+    - Uses information vesion of Kalman filtering and RTS smoothing
+    - Accumulates sufficient statistics across trials
+    - Required for parameter updates in `MSTEP`
+
+    Modifies `S.est` in-place with computed expectations.
     """
 
     # estimate latent covariance ==================
@@ -159,7 +191,6 @@ function ESTEP!(S)
 
 
     # estimate latent mean  ======================
-    # init
     @inline estimate_mean!(S);   
 
 end
@@ -173,25 +204,66 @@ end
 # ===== ESTIMATE LATENT COVARIANCE =================================================================
 
 function estimate_cov!(S)
+    """
+        estimate_cov!(S::core_struct)
+
+    Estimate state covariances via Kalman filtering and RTS smoothing.
+
+    # Arguments
+    - `S`: Core structure containing model parameters and data
+
+    # Description
+    For each trial:
+    1. Initializes with prior covariance P0
+    2. Calls `filter_cov!` for forward pass 
+    3. Calls `smooth_cov!` for backward pass
+    4. Accumulates cross-time covariances
+
+    # Implementation Notes
+    - Updates `S.est.pred_cov`, `S.est.filt_cov`, `S.est.smooth_cov`
+    - Since covaraince filter-smoother does not depend on inputs or observations, 
+        it is computed once for all trials and then scaled by the number of trials.
+    - Uses PDMat type to ensure positive definiteness
+    """
 
     # filter cov ================================
     S.est.pred_cov[1] = deepcopy(S.mdl.P0);
     S.est.pred_icov[1] = deepcopy(S.mdl.iP0);
     S.est.filt_cov[1] = inv(S.mdl.CiRC + S.mdl.iP0); 
 
-    filter_cov!(S);
+    @inline filter_cov!(S);
 
 
     # smooth cov  ===============================
     S.est.smooth_xcov .= zeros(S.dat.x_dim, S.dat.x_dim);
     S.est.smooth_cov[end] = S.est.filt_cov[end];
 
-    smooth_cov!(S);
+    @inline smooth_cov!(S);
 
 end
 
 
 function filter_cov!(S)
+    """
+        filter_cov!(S::core_struct)
+
+    Forward pass covariance estimation using information form.
+
+    # Arguments
+    - `S`: Core structure containing model parameters
+
+    # Description
+    For each timepoint:
+    1. Predicts next covariance: P(t+1|t) = APA' + Q
+    2. Computes information matrices
+    3. Updates using information filter equations
+
+    # Implementation Notes
+    - Updates `S.est.pred_cov`, `S.est.pred_icov`, `S.est.filt_cov`
+    - Alternative implementation: `filter_cov_KF!` for standard filter (no reccomended)
+    - Uses PDMat type for numerical stability
+    """
+
 
     # filter covariance ================================
     @inbounds @views for tt in eachindex(S.est.filt_cov)[2:end]
@@ -206,7 +278,26 @@ end
 
 
 function filter_cov_KF!(S)
-    # standard KF
+    """
+        smooth_cov!(S::core_struct)
+
+    Backward pass covariance estimation using RTS smoother.
+
+    # Arguments
+    - `S`: Core structure containing filtered estimates
+
+    # Description
+    For each timepoint (backwards):
+    1. Computes smoothing gain matrix G(t)
+    2. Updates covariance: P(t|1:T) = P(t|t) + G[P(t+1|1:T) - P(t+1|t)]G'
+    3. Accumulates cross-covariance for dynamics
+
+    # Implementation Notes
+    - Updates `S.est.smooth_cov`, `S.est.smooth_xcov`
+    - Requires valid filtered covariances from `filter_cov!`
+    - Uses temporary storage in `S.est.xdim2_temp`
+    """
+
 
     # filter covariance ================================
     @inbounds @views for tt in eachindex(S.est.filt_cov)[2:end]
@@ -228,6 +319,26 @@ end
 
 
 @inline function smooth_cov!(S)
+    """
+        smooth_cov!(S::core_struct)
+
+    Compute backward pass covariances using RTS smoother.
+
+    # Arguments
+    - `S`: Core structure containing filtered estimates
+
+    # Description
+    For each timepoint (backwards):
+    1. Computes smoother gain matrix
+    2. Updates smoothed state covariance
+    3. Accumulates cross-time covariance
+
+    Updates in-place:
+    - `S.est.smooth_cov`: Smoothed state covariances
+    - `S.est.smooth_xcov`: Cross-time state covariances
+
+    Uses efficient matrix operations with temporary storage in `S.est.xdim2_temp`.
+    """
 
 
 
@@ -258,6 +369,26 @@ end
 # ===== ESTIMATE LATENT MEAN =================================================================
 
 function estimate_mean!(S)
+    """
+        estimate_mean!(S::core_struct)
+
+    Estimate latent state means via Kalman filtering and RTS smoothing.
+
+    # Arguments
+    - `S`: Core structure containing model parameters and data
+
+    # Description
+    For each trial:
+    1. Initializes predicted means using initial inputs
+    2. Calls `filter_mean!` for forward pass
+    3. Calls `smooth_mean!` for backward pass
+    4. Accumulates results across trials
+
+    # Implementation Notes
+    - Updates `S.est.pred_mean`, `S.est.filt_mean`, `S.est.smooth_mean`
+    - Works in conjunction with covariances from `estimate_cov!`
+    - Uses efficient matrix operations with preallocation
+    """
 
     @inbounds @views for tl in axes(S.dat.y_train,3)   
 
@@ -278,7 +409,7 @@ function estimate_mean!(S)
         S.est.xdim_temp .+= S.est.CiRY[:,1];
         mul!(S.est.filt_mean[:,1], S.est.filt_cov[1], S.est.xdim_temp, 1.0, 0.0);
 
-        filter_mean!(S);
+        @inline filter_mean!(S);
     
 
         # smooth mean  ==================================
@@ -303,6 +434,26 @@ end
 
 
 @inline function filter_mean!(S)
+    """
+        filter_mean!(S::core_struct)
+
+    Forward pass state estimation using information form Kalman filter.
+
+    # Arguments
+    - `S`: Core structure containing model parameters and data
+
+    # Description
+    For each timepoint:
+    1. Predicts next state: x̂(t+1|t) = Ax̂(t|t) + Bu(t)
+    2. Updates with observations using information form
+    3. Uses covariances from `filter_cov!`
+
+    # Implementation Notes
+    - Updates `S.est.pred_mean`, `S.est.filt_mean` 
+    - Requires valid `S.est.pred_cov`, `S.est.filt_cov`
+    - Alternative implementation: `filter_mean_KF!` for standard form (not reccomended)
+    """
+
 
     # filter mean [slow]
     @inbounds @views for tt in eachindex(S.est.pred_icov)[2:end]
@@ -345,6 +496,25 @@ end
 
 
 @inline function smooth_mean!(S)
+    """
+        smooth_mean!(S::core_struct)
+
+    Backward pass state estimation using RTS smoother.
+
+    # Arguments
+    - `S`: Core structure containing filtered estimates
+
+    # Description
+    For each timepoint (backwards):
+    1. Computes smoothing gain from `smooth_cov!`
+    2. Updates state: x̂(t|1:T) = x̂(t|t) + G(t)[x̂(t+1|1:T) - Ax̂(t|t) - Bu(t)]
+    3. Uses filtered means from `filter_mean!`
+
+    # Implementation Notes
+    - Updates `S.est.smooth_mean`
+    - Requires valid `S.est.filt_mean`, `S.est.smooth_cov`
+    - Uses smoothing matrices from `smooth_cov!`
+    """
 
     # smooth mean
     @inbounds @views for tt in eachindex(S.est.pred_icov)[end-1:-1:1]
@@ -365,6 +535,39 @@ end
 # ===== ESTIMATE MODEL MOMENTS =================================================================
 
 function init_moments!(S)
+    """
+        init_moments!(S::core_struct)
+
+    Initialize sufficient statistics matrices needed for parameter estimation in the M-step.
+
+    # Arguments
+    - `S`: Core structure containing smoothed state estimates
+
+    # Description
+    Initializes three sets of moment matrices:
+
+    Initial State Moments:
+    - `xy_init`: Cross moments between initial inputs (u₀) and states (x₁)
+    - `yy_init`: Initial state covariance scaled by number of trials
+    - `n_init`: Number of initial state observations
+
+    Dynamics Moments:
+    - `xx_dyn`: Augmented state-input covariance [x;u][x;u]'
+    - `xy_dyn`: Cross moments between current and next states
+    - `yy_dyn`: Next state covariance 
+    - `n_dyn`: Number of state transitions
+
+    Observation Moments:
+    - `xx_obs`: State covariance across all timepoints
+    - `xy_obs`: Cross moments between states and observations
+    - `n_obs`: Total number of observations
+
+    # Implementation Notes
+    - All matrices are initialized with appropriate dimensions
+    - Covariance matrices are scaled by number of trials
+    - Uses efficient in-place operations with `.=`
+    - Leverages precomputed smoothed state estimates
+    """
 
 
     # init ===============================================
@@ -396,6 +599,36 @@ end
 
 
 @views function estimate_moments!(S)
+    """
+        estimate_moments!(S::core_struct)
+
+    Compute sufficient statistics for parameter updates in the M-step.
+
+    # Arguments
+    - `S`: Core structure containing smoothed state estimates
+
+    # Description
+    Accumulates moments needed for parameter estimation:
+
+    Initial state moments:
+    - `S.est.xy_init`: Cross-covariance between initial inputs and states
+    - `S.est.yy_init`: Covariance of initial states
+
+    Dynamic moments:
+    - `S.est.xx_dyn`: Augmented state-input covariance [x;u][x;u]'
+    - `S.est.xy_dyn`: Cross-covariance between current and next states
+    - `S.est.yy_dyn`: Covariance of next states 
+    - `S.est.n_dyn`: Number of transition pairs
+
+    Observation moments:
+    - `S.est.xx_obs`: State covariance
+    - `S.est.xy_obs`: Cross-covariance between states and observations
+    - `S.est.n_obs`: Number of observations
+
+    # Implementation Note
+    Uses efficient matrix operations with preallocation for speed.
+    Updates all moment matrices in-place within `S.est`.
+    """
     
     
     # convienence variables =======================
@@ -436,6 +669,40 @@ end
 # ===== M-STEP =================================================================
 
 function MSTEP(S)::model_struct
+    """
+        MSTEP(S::core_struct) -> model_struct 
+
+    Perform the M-step of the EM algorithm by maximizing expected log-likelihood.
+
+    # Arguments
+    - `S`: Core structure containing expectations from E-step
+
+    # Description
+    Updates model parameters in closed form:
+    1. Initial state distribution (B0, P0)
+    2. State dynamics (A, B, Q)
+    3. Observation model (C, R)
+
+    Uses sufficient statistics:
+    - Initial moments (xy_init, yy_init)
+    - Dynamics moments (xx_dyn, xy_dyn, yy_dyn)
+    - Observation moments (xx_obs, xy_obs)
+
+    Each parameter update includes regularization controlled by:
+    - Prior strength parameters (`S.prm.lam_*`): B0, A, B, C
+    - Degrees of freedom parameters (`S.prm.df_*`): (P0, Q, R)
+    - Structure constraints (`S.prm.*_type`): (P0, Q, R)
+    By default, priors are not used for the noise covariances.
+
+    # Implementation Notes
+    - Returns new model_struct with updated parameters
+    - Applies regularization via prior parameters
+    - Ensures valid covariance formats
+    - Uses efficient matrix operations
+
+    # Returns
+    New `model_struct` containing updated parameters
+    """
     
     # initials ===============================================
     # Mean

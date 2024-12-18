@@ -2,10 +2,13 @@
 
 
 # function to assign arguments
-function  assign_arguements(S, conds)
-    @reset S.dat.pt = conds[1];
-    @reset S.dat.x_dim = conds[2];
-end
+# function  assign_arguments(S, conds)
+#     @reset S.dat.pt = conds[1];
+#     @reset S.dat.x_dim = conds[2];
+
+#     return S
+
+# end
 
 
 
@@ -108,6 +111,8 @@ function create_input_basis(S, n_trials)
 end
 
 
+
+
 # transform observations (typically PCA)
 function transform_observations(S, y_long)
 
@@ -173,7 +178,9 @@ end
 
 # format the B matrix for SSID
 function format_B_preSSID(S)
-    # extract a subset of predictors to keep SSID well-posed
+    # Extract a subset of predictors columns for SSID.
+    # This helps to keep SSID well-posed (it does best with sparse inputs)
+    # e.g., we only use the second basis function for each predictor (to avoid collinearity with the initial condition)
     # write your own functions here
 
     if (S.dat.basis_name == "bspline")
@@ -197,7 +204,8 @@ end
 
 
 function format_B_postSSID(S, sys)
-    # assign the estimated B columns to the rest of the matrix
+    # after SSID, assign the estimated B columns to the rest of the matrix
+    # e.g., we assign the estimated B columns from the second basis function to the rest of the matrix
     # write your own functions here
 
     if (S.dat.basis_name == "bspline") 

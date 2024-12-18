@@ -5,6 +5,8 @@ using Test
 using Accessors
 
 
+
+
 # select tests
 do_Aqua = true
 do_custom = true
@@ -30,7 +32,6 @@ end
 
 # SPECIFIC TESTS
 if do_custom
-
    
     println("\n\nCUSTOM TESTS ...\n")
 
@@ -43,16 +44,28 @@ if do_custom
                 prm=param_struct(
                     load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
                     save_path=pkgdir(StateSpaceAnalysis, "example"),
+                    cond_field=["x_dim"],
+                    x_dim_fast = round.(Int64, 1:2),
+                    x_dim_slow = round.(Int64, 3:4),
                 ), 
                 dat=data_struct(),
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
-            arg_in = ["1", "true"]
-            S = read_args(S, arg_in)
+            
+            arg_in = ["2", "true"]
+            @reset S = read_args(S, arg_in)
             @test !isempty(S.prm.save_name)
-            @test S.prm.do_fast == true || S.prm.do_fast == false
+            @test S.dat.x_dim == 2
+            @test S.prm.do_fast == true
+
+            arg_in = ["1", "false"]
+            @reset S = read_args(S, arg_in)
+            @test !isempty(S.prm.save_name)
+            @test S.dat.x_dim == 3
+            @test S.prm.do_fast == false
         end
 
 
@@ -68,11 +81,12 @@ if do_custom
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
             @reset S.prm.save_path = "test"
             @reset S.prm.model_name = "test_model"
             StateSpaceAnalysis.setup_path(S)
-            @test isdir("test/fit-results/figures/test_model")
+            @test isdir(joinpath("test", "fit-results", "figures", "test_model")) 
         end
 
 
@@ -91,6 +105,7 @@ if do_custom
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
             @reset S = StateSpaceAnalysis.load_data(S)
             @test !isempty(S.dat.y_train_orig)
@@ -110,6 +125,7 @@ if do_custom
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
             S = StateSpaceAnalysis.load_data(S);
             S = build_inputs(S)
@@ -119,8 +135,8 @@ if do_custom
 
 
 
-        # Test for whiten_y function
-        @testset "whiten_y" begin
+        # Test for project_y function
+        @testset "project_y" begin
             S = core_struct(
                 prm=param_struct(
                     load_path=pkgdir(StateSpaceAnalysis, "example", "example-data"),
@@ -131,9 +147,10 @@ if do_custom
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
             S = StateSpaceAnalysis.load_data(S);
-            S = StateSpaceAnalysis.whiten(S)
+            S = StateSpaceAnalysis.project(S)
             @test !isempty(S.dat.y_train)
             @test !isempty(S.dat.y_test)
         end
@@ -152,6 +169,7 @@ if do_custom
                 res=results_struct(),
                 est=estimates_struct(),
                 mdl=model_struct(),
+                fcn=function_struct{core_struct}(),
                 );
             S = StateSpaceAnalysis.preprocess_fit(S);
 
