@@ -30,13 +30,12 @@ This version is very preliminary, so there may be some rough edges!
 
 You can easily install the current release of *StateSpaceAnalysis.jl* from the Julia General Registry:
 
-    ```julia
-    using Pkg  
-    Pkg.add("StateSpaceAnalysis")
-    ```
+```julia
+using Pkg
+Pkg.add("StateSpaceAnalysis")
+```
 
-
-You may want to work directly with the package, e.g., to modify custom functions for setting up your input bases.
+You'll probably want to work directly with the package, e.g., to run the example code, or modify custom functions for setting up your input bases.
 You can create a local copy by cloning the github repo:
 
 1. **Clone the repository:**
@@ -122,9 +121,6 @@ StateSpaceAnalysis.null_loglik!(S);
 @reset S.est = deepcopy(set_estimates(S));
 @reset S = deepcopy(generate_rand_params(S));
 ```
-
-These preprocessing steps depend on custom code that you can modify.
-# TODO!
 
 
 ### Warm-start the EM with initial parameters from Subspace Identification (SSID):
